@@ -1,0 +1,13 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+backend/*.db
+backend/.env
+
+# Xcode / iOS
+ios/**/xcuserdata/
+ios/**/*.xcworkspace/xcuserdata/
+ios/build/
+ios/DerivedData/
+.DS_Store

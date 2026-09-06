@@ -1,0 +1,164 @@
+import SwiftUI
+
+struct WorkoutDetailView: View {
+    let workout: Workout
+    @ObservedObject var viewModel: TrainingViewModel
+    @State private var notes = ""
+
+    private var currentWorkout: Workout {
+        viewModel.block?.weeks
+            .flatMap(\.workouts)
+            .first(where: { $0.id == workout.id }) ?? workout
+    }
+
+    var body: some View {
+        List {
+            if currentWorkout.prescription["by_feel"]?.boolValue == true {
+                Section {
+                    Text("No fixed prescription — do what your body needs.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let warmUp = currentWorkout.prescription["warm_up"]?.arrayValue, !warmUp.isEmpty {
+                Section("Warm-Up") {
+                    ForEach(Array(warmUp.enumerated()), id: \.offset) { _, item in
+                        Text(item.displayString)
+                    }
+                }
+            }
+
+            if let blocks = currentWorkout.prescription["blocks"]?.arrayValue, !blocks.isEmpty {
+                Section("Main Set") {
+                    ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                        if let dict = block.objectValue {
+                            BlockRow(block: dict)
+                        }
+                    }
+                }
+            }
+
+            if let conditioning = currentWorkout.prescription["conditioning"]?.objectValue {
+                Section("Conditioning") {
+                    ConditioningView(conditioning: conditioning)
+                }
+            }
+
+            if let coolDown = currentWorkout.prescription["cool_down"]?.arrayValue, !coolDown.isEmpty {
+                Section("Cool-Down") {
+                    ForEach(Array(coolDown.enumerated()), id: \.offset) { _, item in
+                        Text(item.displayString)
+                    }
+                }
+            }
+
+            if let completedAt = currentWorkout.completedAt {
+                Section("Logged") {
+                    Text("Completed \(completedAt.formatted(date: .abbreviated, time: .shortened))")
+                    if let notes = currentWorkout.loggedResult?["notes"]?.stringValue, !notes.isEmpty {
+                        Text(notes).foregroundStyle(.secondary)
+                    }
+                }
+            } else {
+                Section("Log this workout") {
+                    TextField("Notes (how did it feel?)", text: $notes, axis: .vertical)
+                    Button("Mark complete") {
+                        Task { await viewModel.logWorkout(currentWorkout, notes: notes) }
+                    }
+                }
+            }
+        }
+        .navigationTitle(currentWorkout.title)
+    }
+}
+
+private struct BlockRow: View {
+    let block: [String: JSONValue]
+
+    private var title: String {
+        (block["movement"]?.stringValue ?? "movement")
+            .replacingOccurrences(of: "_", with: " ")
+            .capitalized
+    }
+
+    private var subtitleParts: [String] {
+        var parts: [String] = []
+        if let sets = block["sets"], let reps = block["reps"] {
+            let unit = block["unit"]?.stringValue.map { " \($0)" } ?? ""
+            parts.append("\(sets.displayString) x \(reps.displayString)\(unit)")
+        }
+        if let duration = block["duration_min"] { parts.append("\(duration.displayString) min") }
+        if let distance = block["distance_m"] { parts.append("\(distance.displayString) m") }
+        if let tempo = block["tempo"]?.stringValue { parts.append("tempo \(tempo)") }
+        if let rest = block["rest_sec"] { parts.append("rest \(rest.displayString)s") }
+        return parts
+    }
+
+    private var detail: String? {
+        block["detail"]?.stringValue ?? block["note"]?.stringValue
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.body)
+            if !subtitleParts.isEmpty {
+                Text(subtitleParts.joined(separator: " · "))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            if let detail {
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+private struct ConditioningView: View {
+    let conditioning: [String: JSONValue]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let format = conditioning["format"]?.stringValue {
+                Text(headline(for: format))
+                    .font(.headline)
+            }
+            if let movements = conditioning["movements"]?.arrayValue {
+                ForEach(Array(movements.enumerated()), id: \.offset) { _, movement in
+                    Text("• \(movement.displayString)")
+                }
+            }
+            if let options = conditioning["options"]?.arrayValue {
+                ForEach(Array(options.enumerated()), id: \.offset) { _, option in
+                    if let dict = option.objectValue {
+                        BlockRow(block: dict)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func headline(for format: String) -> String {
+        switch format {
+        case "amrap":
+            let duration = conditioning["duration_min"]?.displayString ?? ""
+            return "\(duration)-min AMRAP"
+        case "rounds":
+            let rounds = conditioning["rounds"]?.displayString ?? ""
+            let rest = conditioning["rest_sec"]?.displayString
+            return rest.map { "\(rounds) rounds, rest \($0)s" } ?? "\(rounds) rounds"
+        case "steady_aerobic":
+            let duration = conditioning["duration_min"]?.displayString ?? ""
+            return "\(duration) min steady aerobic"
+        case "choice":
+            return "Choose one"
+        case "mixed_machine_amrap":
+            return "Mixed machine AMRAP"
+        default:
+            return format.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+}
