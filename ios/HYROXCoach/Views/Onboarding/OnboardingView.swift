@@ -13,11 +13,12 @@ struct OnboardingView: View {
     @State private var goalTime: Int?
     @State private var goalEventDate = Date().addingTimeInterval(60 * 60 * 24 * 56)
 
-    @State private var bestSoloTime: Int?
-    @State private var raceCount = 0
+    @State private var pastRaces: [PastResultCreate] = []
+    @State private var showingAddRace = false
     @State private var experienceTier: ExperienceTier = .beginner
     @State private var tierManuallySet = false
     @State private var isApplyingSuggestion = false
+    @State private var isSubmittingRaces = false
 
     var body: some View {
         NavigationStack {
@@ -35,7 +36,7 @@ struct OnboardingView: View {
                         Text("kg")
                     }
                     Picker("Division", selection: $division) {
-                        ForEach(Division.allCases) { division in
+                        ForEach(Division.allCases.filter(\.isSolo)) { division in
                             Text(division.displayName).tag(division)
                         }
                     }
@@ -47,8 +48,26 @@ struct OnboardingView: View {
                 }
 
                 Section {
-                    TimeInputField(label: "Best solo HYROX time", seconds: $bestSoloTime)
-                    Stepper("HYROX races (incl. doubles): \(raceCount)", value: $raceCount, in: 0...50)
+                    ForEach(Array(pastRaces.enumerated()), id: \.offset) { index, race in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(race.division.displayName) — \(TimeInputField.format(race.totalTimeSeconds))")
+                            Text(race.eventDate.formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .onDelete { indexSet in
+                        pastRaces.remove(atOffsets: indexSet)
+                        Task { await refreshSuggestedTier() }
+                    }
+                    Button("Add a past race") { showingAddRace = true }
+                } header: {
+                    Text("Past HYROX races")
+                } footer: {
+                    Text("Include doubles races too — they count toward your experience level even though you train solo.")
+                }
+
+                Section {
                     Picker("Experience level", selection: $experienceTier) {
                         ForEach(ExperienceTier.allCases) { tier in
                             Text(tier.displayName).tag(tier)
@@ -57,10 +76,8 @@ struct OnboardingView: View {
                 } header: {
                     Text("Experience level")
                 } footer: {
-                    Text("We'll suggest a level from your time and race count, but you can pick a different one.")
+                    Text("We'll suggest a level from your race history, but you can pick a different one.")
                 }
-                .onChange(of: bestSoloTime) { _, _ in Task { await refreshSuggestedTier() } }
-                .onChange(of: raceCount) { _, _ in Task { await refreshSuggestedTier() } }
                 .onChange(of: experienceTier) { _, _ in
                     if isApplyingSuggestion {
                         isApplyingSuggestion = false
@@ -104,16 +121,22 @@ struct OnboardingView: View {
                     Button {
                         Task { await submit() }
                     } label: {
-                        if auth.isLoading {
+                        if auth.isLoading || isSubmittingRaces {
                             ProgressView().frame(maxWidth: .infinity)
                         } else {
                             Text("Build my program").frame(maxWidth: .infinity)
                         }
                     }
-                    .disabled(name.isEmpty || auth.isLoading)
+                    .disabled(name.isEmpty || auth.isLoading || isSubmittingRaces)
                 }
             }
             .navigationTitle("Tell us about you")
+            .sheet(isPresented: $showingAddRace) {
+                AddPastRaceView { race in
+                    pastRaces.append(race)
+                    Task { await refreshSuggestedTier() }
+                }
+            }
         }
     }
 
@@ -127,7 +150,8 @@ struct OnboardingView: View {
 
     private func refreshSuggestedTier() async {
         guard !tierManuallySet else { return }
-        guard let suggested = try? await APIClient.shared.suggestExperienceTier(bestSoloTimeSeconds: bestSoloTime, raceCount: raceCount) else { return }
+        let bestSoloTime = pastRaces.filter(\.division.isSolo).map(\.totalTimeSeconds).min()
+        guard let suggested = try? await APIClient.shared.suggestExperienceTier(bestSoloTimeSeconds: bestSoloTime, raceCount: pastRaces.count) else { return }
         isApplyingSuggestion = true
         experienceTier = suggested
     }
@@ -146,5 +170,12 @@ struct OnboardingView: View {
             goalEventDate: goalEventDate
         )
         await auth.completeOnboarding(payload)
+        guard auth.errorMessage == nil else { return }
+
+        isSubmittingRaces = true
+        for race in pastRaces {
+            _ = try? await APIClient.shared.addPastResult(race)
+        }
+        isSubmittingRaces = false
     }
 }

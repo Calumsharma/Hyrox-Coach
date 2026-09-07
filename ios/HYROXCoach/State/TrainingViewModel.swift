@@ -18,7 +18,7 @@ final class TrainingViewModel: ObservableObject {
         }
     }
 
-    func createBlock(lengthWeeks: Int, startDate: Date, goalEventDate: Date, goalTimeSeconds: Int) async {
+    func createBlock(lengthWeeks: Int, startDate: Date, goalEventDate: Date, goalTimeSeconds: Int, discipline: Discipline = .hyrox) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -29,7 +29,8 @@ final class TrainingViewModel: ObservableObject {
                     lengthWeeks: lengthWeeks,
                     startDate: startDate,
                     goalEventDate: goalEventDate,
-                    goalTimeSeconds: goalTimeSeconds
+                    goalTimeSeconds: goalTimeSeconds,
+                    discipline: discipline
                 )
             )
         } catch {

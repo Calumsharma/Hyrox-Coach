@@ -52,6 +52,11 @@ struct SignInView: View {
                     Task { await runDebugSeed() }
                 }
                 .font(.footnote)
+
+                Button("Sign in only, skip onboarding (debug)") {
+                    Task { await auth.signIn(email: "onboarding-test+\(Int(Date().timeIntervalSince1970))@hyroxcoach.app") }
+                }
+                .font(.footnote)
                 #endif
             }
             .padding(.horizontal, 32)

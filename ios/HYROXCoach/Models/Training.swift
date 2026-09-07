@@ -42,6 +42,7 @@ struct TrainingWeek: Codable, Identifiable, Hashable {
 
 struct TrainingBlock: Codable, Identifiable {
     let id: String
+    let discipline: Discipline
     let startDate: Date
     let lengthWeeks: Int
     let goalEventDate: Date?
@@ -52,7 +53,7 @@ struct TrainingBlock: Codable, Identifiable {
     var weeks: [TrainingWeek]
 
     enum CodingKeys: String, CodingKey {
-        case id
+        case id, discipline
         case startDate = "start_date"
         case lengthWeeks = "length_weeks"
         case goalEventDate = "goal_event_date"
@@ -69,11 +70,13 @@ struct TrainingBlockCreate: Codable {
     let startDate: Date
     let goalEventDate: Date
     let goalTimeSeconds: Int
+    var discipline: Discipline = .hyrox
 
     enum CodingKeys: String, CodingKey {
         case lengthWeeks = "length_weeks"
         case startDate = "start_date"
         case goalEventDate = "goal_event_date"
         case goalTimeSeconds = "goal_time_seconds"
+        case discipline
     }
 }

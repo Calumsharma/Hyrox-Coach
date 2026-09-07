@@ -5,6 +5,9 @@ enum Division: String, Codable, CaseIterable, Identifiable {
     case openWomen = "open_women"
     case proMen = "pro_men"
     case proWomen = "pro_women"
+    case doublesMen = "doubles_men"
+    case doublesWomen = "doubles_women"
+    case doublesMixed = "doubles_mixed"
 
     var id: String { rawValue }
 
@@ -14,6 +17,16 @@ enum Division: String, Codable, CaseIterable, Identifiable {
         case .openWomen: return "Open — Women"
         case .proMen: return "Pro — Men"
         case .proWomen: return "Pro — Women"
+        case .doublesMen: return "Doubles — Men"
+        case .doublesWomen: return "Doubles — Women"
+        case .doublesMixed: return "Doubles — Mixed"
+        }
+    }
+
+    var isSolo: Bool {
+        switch self {
+        case .openMen, .openWomen, .proMen, .proWomen: return true
+        case .doublesMen, .doublesWomen, .doublesMixed: return false
         }
     }
 }
@@ -64,6 +77,35 @@ enum WorkoutType: String, Codable, Hashable {
         case .raceDay: return "Race Day"
         }
     }
+}
+
+enum Discipline: String, Codable, CaseIterable, Identifiable, Hashable {
+    case hyrox
+    case fiveK = "5k"
+    case tenK = "10k"
+    case halfMarathon = "half_marathon"
+    case marathon
+    case halfIronman = "half_ironman"
+    case crossfitCompetition = "crossfit_competition"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .hyrox: return "HYROX"
+        case .fiveK: return "5K"
+        case .tenK: return "10K"
+        case .halfMarathon: return "Half Marathon"
+        case .marathon: return "Marathon"
+        case .halfIronman: return "Half Ironman"
+        case .crossfitCompetition: return "CrossFit Competition"
+        }
+    }
+
+    /// Only HYROX has a real program builder on the backend right now — see
+    /// UnsupportedDisciplineError in app/services/program_engine.py. Others are shown in
+    /// the picker as a stated roadmap, not working features.
+    var isSupported: Bool { self == .hyrox }
 }
 
 enum ExperienceTier: String, Codable, CaseIterable, Identifiable, Hashable {

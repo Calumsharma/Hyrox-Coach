@@ -16,10 +16,26 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models import Athlete, TrainingBlock, TrainingWeek, Workout
-from app.models.enums import ExperienceTier, StationSlug, WorkoutType
+from app.models.enums import Discipline, ExperienceTier, StationSlug, WorkoutType
 from app.services import movement_library as lib
 from app.services.periodization import build_intensity_curve
 from app.services.weakness import rank_weaknesses
+
+
+class UnsupportedDisciplineError(ValueError):
+    """Raised when asked to build a program for a discipline with no real builder yet.
+
+    We deliberately don't fall back to a generic/fabricated program here — the whole point
+    of this engine is that HYROX content came from a real coach's program, and pretending
+    to have equivalent expertise for other sports would be dishonest. See Discipline enum.
+    """
+
+    def __init__(self, discipline: Discipline):
+        self.discipline = discipline
+        super().__init__(
+            f"Programming for {discipline.value} isn't built yet — HYROX is the only "
+            "fully supported discipline right now."
+        )
 
 # The five "loadable" stations that rotate through the Day 4-style station day in the
 # reference program (SkiErg/Row/burpee broad jumps show up elsewhere, as erg/run work).
@@ -50,6 +66,33 @@ def generate_training_block(
     goal_time_seconds: int,
     deload_week_numbers: Optional[list[int]] = None,
     taper_week_numbers: Optional[list[int]] = None,
+    discipline: Discipline = Discipline.HYROX,
+) -> TrainingBlock:
+    """Dispatches to the builder for `discipline`. Only HYROX has one — see `UnsupportedDisciplineError`."""
+    if discipline != Discipline.HYROX:
+        raise UnsupportedDisciplineError(discipline)
+
+    return _generate_hyrox_block(
+        db=db,
+        athlete=athlete,
+        length_weeks=length_weeks,
+        start_date=start_date,
+        goal_event_date=goal_event_date,
+        goal_time_seconds=goal_time_seconds,
+        deload_week_numbers=deload_week_numbers,
+        taper_week_numbers=taper_week_numbers,
+    )
+
+
+def _generate_hyrox_block(
+    db: Session,
+    athlete: Athlete,
+    length_weeks: int,
+    start_date: date,
+    goal_event_date: date,
+    goal_time_seconds: int,
+    deload_week_numbers: Optional[list[int]],
+    taper_week_numbers: Optional[list[int]],
 ) -> TrainingBlock:
     deload_weeks = set(deload_week_numbers if deload_week_numbers is not None else suggest_deload_weeks(length_weeks))
     taper_weeks = set(taper_week_numbers if taper_week_numbers is not None else suggest_taper_weeks(length_weeks))
@@ -60,6 +103,7 @@ def generate_training_block(
 
     block = TrainingBlock(
         athlete_id=athlete.id,
+        discipline=Discipline.HYROX,
         start_date=start_date,
         length_weeks=length_weeks,
         goal_event_date=goal_event_date,

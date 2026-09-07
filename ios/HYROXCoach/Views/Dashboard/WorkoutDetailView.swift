@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkoutDetailView: View {
     let workout: Workout
     @ObservedObject var viewModel: TrainingViewModel
+    @StateObject private var library = ExerciseLibraryStore()
     @State private var notes = ""
 
     private var currentWorkout: Workout {
@@ -32,7 +33,7 @@ struct WorkoutDetailView: View {
                 Section("Main Set") {
                     ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                         if let dict = block.objectValue {
-                            BlockRow(block: dict)
+                            BlockRow(block: dict, library: library)
                         }
                     }
                 }
@@ -40,7 +41,7 @@ struct WorkoutDetailView: View {
 
             if let conditioning = currentWorkout.prescription["conditioning"]?.objectValue {
                 Section("Conditioning") {
-                    ConditioningView(conditioning: conditioning)
+                    ConditioningView(conditioning: conditioning, library: library)
                 }
             }
 
@@ -69,16 +70,27 @@ struct WorkoutDetailView: View {
             }
         }
         .navigationTitle(currentWorkout.title)
+        .navigationDestination(for: Exercise.self) { exercise in
+            ExerciseDetailView(exercise: exercise)
+        }
+        .task { await library.loadIfNeeded() }
     }
 }
 
 private struct BlockRow: View {
     let block: [String: JSONValue]
+    let library: ExerciseLibraryStore
+
+    private var movementSlug: String? { block["movement"]?.stringValue }
 
     private var title: String {
-        (block["movement"]?.stringValue ?? "movement")
+        (movementSlug ?? "movement")
             .replacingOccurrences(of: "_", with: " ")
             .capitalized
+    }
+
+    private var linkedExercise: Exercise? {
+        movementSlug.flatMap { library.exercise(forMovementSlug: $0) }
     }
 
     private var subtitleParts: [String] {
@@ -100,7 +112,16 @@ private struct BlockRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.body)
+            if let linkedExercise {
+                NavigationLink(value: linkedExercise) {
+                    HStack {
+                        Text(title).font(.body)
+                        Image(systemName: "info.circle").font(.caption).foregroundStyle(.blue)
+                    }
+                }
+            } else {
+                Text(title).font(.body)
+            }
             if !subtitleParts.isEmpty {
                 Text(subtitleParts.joined(separator: " · "))
                     .font(.subheadline)
@@ -118,6 +139,7 @@ private struct BlockRow: View {
 
 private struct ConditioningView: View {
     let conditioning: [String: JSONValue]
+    let library: ExerciseLibraryStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -133,7 +155,7 @@ private struct ConditioningView: View {
             if let options = conditioning["options"]?.arrayValue {
                 ForEach(Array(options.enumerated()), id: \.offset) { _, option in
                     if let dict = option.objectValue {
-                        BlockRow(block: dict)
+                        BlockRow(block: dict, library: library)
                     }
                 }
             }

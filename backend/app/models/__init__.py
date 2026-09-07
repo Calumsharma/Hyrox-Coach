@@ -1,5 +1,6 @@
 from app.models.athlete import Athlete, PastHyroxResult
 from app.models.station import StationReference, AccessoryMovement
+from app.models.exercise import ExerciseReference
 from app.models.recovery import WearableConnection, RecoveryReading, RecoveryScore
 from app.models.training import TrainingBlock, TrainingWeek, Workout
 from app.models.nutrition import NutritionProfile, NutritionGuidance
@@ -17,4 +18,5 @@ __all__ = [
     "Workout",
     "NutritionProfile",
     "NutritionGuidance",
+    "ExerciseReference",
 ]

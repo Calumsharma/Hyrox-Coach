@@ -96,6 +96,10 @@ final class APIClient {
         try await request("/stations", method: "GET")
     }
 
+    func listExercises() async throws -> [Exercise] {
+        try await request("/exercises", method: "GET", authorized: false)
+    }
+
     func createTrainingBlock(_ payload: TrainingBlockCreate) async throws -> TrainingBlock {
         try await request("/training-blocks", method: "POST", body: payload)
     }

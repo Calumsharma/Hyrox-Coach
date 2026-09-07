@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import WorkoutType
+from app.models.enums import Discipline, WorkoutType
 
 
 class TrainingBlockCreate(BaseModel):
@@ -12,6 +12,7 @@ class TrainingBlockCreate(BaseModel):
     start_date: date
     goal_event_date: date
     goal_time_seconds: int
+    discipline: Discipline = Discipline.HYROX
     # Explicit, coach/athlete-set schedule. Omit to use the server's suggested default
     # (every 4th week deloads, the final week tapers) rather than a fixed ratio.
     deload_week_numbers: list[int] | None = None
@@ -42,6 +43,7 @@ class TrainingWeekRead(BaseModel):
 class TrainingBlockRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
+    discipline: Discipline
     start_date: date
     length_weeks: int
     goal_event_date: date | None

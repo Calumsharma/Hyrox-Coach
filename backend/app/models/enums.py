@@ -20,6 +20,20 @@ class ExperienceTier(str, enum.Enum):
     ADVANCED = "advanced"
 
 
+class Discipline(str, enum.Enum):
+    """The competition a training block is built for. Only HYROX has a real program builder
+    right now — the others exist as a stated roadmap, not fabricated content. See
+    `app/services/program_engine.py`'s `BUILDERS` registry."""
+
+    HYROX = "hyrox"
+    FIVE_K = "5k"
+    TEN_K = "10k"
+    HALF_MARATHON = "half_marathon"
+    MARATHON = "marathon"
+    HALF_IRONMAN = "half_ironman"
+    CROSSFIT_COMPETITION = "crossfit_competition"
+
+
 class StationSlug(str, enum.Enum):
     SKIERG = "skierg"
     SLED_PUSH = "sled_push"

@@ -6,7 +6,7 @@ from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-from app.models.enums import WorkoutType
+from app.models.enums import Discipline, WorkoutType
 
 
 def _uuid() -> str:
@@ -20,6 +20,7 @@ class TrainingBlock(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     athlete_id: Mapped[str] = mapped_column(String, ForeignKey("athletes.id"), index=True)
+    discipline: Mapped[Discipline] = mapped_column(String, default=Discipline.HYROX)
     start_date: Mapped[date] = mapped_column(Date)
     length_weeks: Mapped[int] = mapped_column(Integer)
     goal_event_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)

@@ -6,6 +6,10 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      GCC_PREPROCESSOR_DEFINITIONS: DEBUG=1
 targets:
   HYROXCoach:
     type: application
@@ -22,6 +26,7 @@ targets:
           NSAllowsLocalNetworking: true
     settings:
       base:
+        PRODUCT_NAME: HYROXCoach
         PRODUCT_BUNDLE_IDENTIFIER: com.hyroxcoach.app
         MARKETING_VERSION: "0.1.0"
         TARGETED_DEVICE_FAMILY: "1"
