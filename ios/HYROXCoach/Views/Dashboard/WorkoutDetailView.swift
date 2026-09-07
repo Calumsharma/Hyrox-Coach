@@ -103,7 +103,25 @@ private struct BlockRow: View {
         if let distance = block["distance_m"] { parts.append("\(distance.displayString) m") }
         if let tempo = block["tempo"]?.stringValue { parts.append("tempo \(tempo)") }
         if let rest = block["rest_sec"] { parts.append("rest \(rest.displayString)s") }
+        if let hrLabel = hrTargetLabel { parts.append(hrLabel) }
         return parts
+    }
+
+    private static let zoneDisplayNames: [String: String] = [
+        "z1_recovery": "Zone 1",
+        "z2_aerobic_base": "Zone 2",
+        "z3_tempo": "Zone 3",
+        "z4_threshold": "Zone 4",
+        "z5_anaerobic": "Zone 5",
+    ]
+
+    private var hrTargetLabel: String? {
+        guard let zoneValue = block["target_hr_zone"]?.stringValue else { return nil }
+        let zoneName = Self.zoneDisplayNames[zoneValue] ?? zoneValue
+        guard let bpmRange = block["target_hr_bpm"]?.arrayValue, bpmRange.count == 2 else {
+            return zoneName
+        }
+        return "\(zoneName): \(bpmRange[0].displayString)-\(bpmRange[1].displayString) bpm"
     }
 
     private var detail: String? {

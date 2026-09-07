@@ -21,6 +21,9 @@ class Athlete(Base):
     name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     weight_kg: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # Self-tested max HR (e.g. from a field test). When absent, the Tanaka formula (208 - 0.7*age)
+    # is used as a fallback — see app/services/heart_rate.py.
+    tested_max_hr: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     division: Mapped[Optional[Division]] = mapped_column(String, nullable=True)
     experience_tier: Mapped[Optional[ExperienceTier]] = mapped_column(String, nullable=True)
     onboarding_completed: Mapped[bool] = mapped_column(default=False)

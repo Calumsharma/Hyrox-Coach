@@ -27,6 +27,7 @@ class AthleteOnboarding(BaseModel):
     weight_kg: float
     division: Division
     experience_tier: ExperienceTier
+    tested_max_hr: int | None = None
     predicted_5k_seconds: int | None = None
     current_10k_seconds: int | None = None
     self_reported_weak_stations: list[StationSlug] = []
@@ -43,6 +44,7 @@ class AthleteRead(BaseModel):
     weight_kg: float | None
     division: Division | None
     experience_tier: ExperienceTier | None
+    tested_max_hr: int | None
     onboarding_completed: bool
     predicted_5k_seconds: int | None
     current_10k_seconds: int | None

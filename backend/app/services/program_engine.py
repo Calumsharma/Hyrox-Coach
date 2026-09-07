@@ -16,10 +16,18 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models import Athlete, TrainingBlock, TrainingWeek, Workout
-from app.models.enums import Discipline, ExperienceTier, StationSlug, WorkoutType
+from app.models.enums import Discipline, ExperienceTier, HeartRateZone, StationSlug, WorkoutType
 from app.services import movement_library as lib
+from app.services.heart_rate import zone_target
 from app.services.periodization import build_intensity_curve
 from app.services.weakness import rank_weaknesses
+
+# Tiers/phases where continuous threshold work replaces interval work — see the physiology
+# research notes in the plan doc. Base-phase weeks stay purely aerobic-volume + light strides;
+# threshold introduction is a build/peak-phase tool, and Beginners aren't given it at all
+# (they need general strength/aerobic base first, per the user's own coaching judgment).
+THRESHOLD_RUN_TIERS = {ExperienceTier.INTERMEDIATE, ExperienceTier.ADVANCED}
+THRESHOLD_RUN_PHASES = {"build", "peak"}
 
 
 class UnsupportedDisciplineError(ValueError):
@@ -129,8 +137,10 @@ def _generate_hyrox_block(
             load_week_index += 1
         else:
             phase = week_plan.phase
-            workouts = _load_week(tier, weaknesses, load_week_index)
+            workouts = _load_week(tier, weaknesses, load_week_index, phase)
             load_week_index += 1
+
+        _attach_hr_targets(athlete, workouts)
 
         week = TrainingWeek(
             block_id=block.id,
@@ -154,6 +164,29 @@ def _workout(day_of_week: int, workout_type: WorkoutType, title: str, prescripti
     return {"day_of_week": day_of_week, "workout_type": workout_type, "title": title, "prescription": prescription}
 
 
+def _attach_hr_targets(athlete: Athlete, workouts: list[dict]) -> None:
+    """Resolves every `target_hr_zone` tag in movement_library.py's output to real bpm numbers
+    for this specific athlete (tested max HR if they have one, Tanaka-estimated otherwise)."""
+
+    for workout in workouts:
+        prescription = workout["prescription"]
+        for block in prescription.get("blocks") or []:
+            _tag_bpm(athlete, block)
+        conditioning = prescription.get("conditioning")
+        if isinstance(conditioning, dict):
+            for option in conditioning.get("options") or []:
+                _tag_bpm(athlete, option)
+
+
+def _tag_bpm(athlete: Athlete, block: dict) -> None:
+    zone_value = block.get("target_hr_zone")
+    if not zone_value:
+        return
+    target = zone_target(athlete, HeartRateZone(zone_value))
+    if target.low_bpm is not None:
+        block["target_hr_bpm"] = [target.low_bpm, target.high_bpm]
+
+
 def _choose_focus_stations(rotation_index: int, weaknesses: list[str]) -> list[str]:
     """Biases the station-day rotation toward the athlete's weaknesses rather than a plain
     round-robin: the athlete's weakest loadable station appears every load week (not just its
@@ -170,12 +203,20 @@ def _station_day_title(focus_stations: list[str]) -> str:
     return " / ".join(names)
 
 
-def _load_week(tier: ExperienceTier, weaknesses: list[str], load_week_index: int) -> list[dict]:
+def _load_week(tier: ExperienceTier, weaknesses: list[str], load_week_index: int, phase: str) -> list[dict]:
     focus_stations = _choose_focus_stations(load_week_index, weaknesses)
+
+    use_threshold_run = tier in THRESHOLD_RUN_TIERS and phase in THRESHOLD_RUN_PHASES
+    wednesday = (
+        _workout(2, WorkoutType.RUN, "Threshold Run", lib.continuous_threshold_run(tier))
+        if use_threshold_run
+        else _workout(2, WorkoutType.RUN, "Run & Row Training", lib.run_row_intervals(tier))
+    )
+
     return [
         _workout(0, WorkoutType.STRENGTH, "Full Body Strength & Conditioning", lib.full_body_strength_conditioning(tier)),
         _workout(1, WorkoutType.AEROBIC, "Easy Run + Core", lib.easy_run_core(tier)),
-        _workout(2, WorkoutType.RUN, "Run & Row Training", lib.run_row_intervals(tier)),
+        wednesday,
         _workout(3, WorkoutType.STATION_SKILL, _station_day_title(focus_stations), lib.station_rotation(tier, focus_stations)),
         _workout(4, WorkoutType.MOBILITY, "Active Recovery or Rest/Mobility", lib.active_recovery()),
         _workout(5, WorkoutType.STATION_SKILL, "HYROX Interval Training", lib.hyrox_interval_training(tier)),

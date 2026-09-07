@@ -38,6 +38,7 @@ struct Athlete: Codable, Identifiable {
     let weightKg: Double?
     let division: Division?
     let experienceTier: ExperienceTier?
+    let testedMaxHR: Int?
     let onboardingCompleted: Bool
     let predicted5kSeconds: Int?
     let current10kSeconds: Int?
@@ -50,6 +51,7 @@ struct Athlete: Codable, Identifiable {
         case id, email, name, age, division
         case weightKg = "weight_kg"
         case experienceTier = "experience_tier"
+        case testedMaxHR = "tested_max_hr"
         case onboardingCompleted = "onboarding_completed"
         case predicted5kSeconds = "predicted_5k_seconds"
         case current10kSeconds = "current_10k_seconds"
@@ -66,6 +68,7 @@ struct AthleteOnboarding: Codable {
     let weightKg: Double
     let division: Division
     let experienceTier: ExperienceTier
+    let testedMaxHR: Int?
     let predicted5kSeconds: Int?
     let current10kSeconds: Int?
     let selfReportedWeakStations: [StationSlug]
@@ -76,6 +79,7 @@ struct AthleteOnboarding: Codable {
         case name, age, division
         case weightKg = "weight_kg"
         case experienceTier = "experience_tier"
+        case testedMaxHR = "tested_max_hr"
         case predicted5kSeconds = "predicted_5k_seconds"
         case current10kSeconds = "current_10k_seconds"
         case selfReportedWeakStations = "self_reported_weak_stations"

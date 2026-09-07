@@ -10,6 +10,7 @@ struct OnboardingView: View {
     @State private var predicted5k: Int?
     @State private var current10k: Int?
     @State private var weakStations: [StationSlug] = []
+    @State private var testedMaxHR: Int?
     @State private var goalTime: Int?
     @State private var goalEventDate = Date().addingTimeInterval(60 * 60 * 24 * 56)
 
@@ -42,9 +43,22 @@ struct OnboardingView: View {
                     }
                 }
 
-                Section("Current fitness") {
+                Section {
                     TimeInputField(label: "Predicted 5k", seconds: $predicted5k)
                     TimeInputField(label: "Current 10k", seconds: $current10k)
+                    HStack {
+                        Text("Tested max HR")
+                        Spacer()
+                        TextField("optional", value: $testedMaxHR, format: .number)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 70)
+                        Text("bpm")
+                    }
+                } header: {
+                    Text("Current fitness")
+                } footer: {
+                    Text("Leave blank and we'll estimate your zones from age instead.")
                 }
 
                 Section {
@@ -163,6 +177,7 @@ struct OnboardingView: View {
             weightKg: weightKg,
             division: division,
             experienceTier: experienceTier,
+            testedMaxHR: testedMaxHR,
             predicted5kSeconds: predicted5k,
             current10kSeconds: current10k,
             selfReportedWeakStations: weakStations,

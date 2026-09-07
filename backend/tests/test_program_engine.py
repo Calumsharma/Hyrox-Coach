@@ -2,6 +2,7 @@ from datetime import date
 
 from app.models import Athlete
 from app.models.enums import ExperienceTier
+from app.services.heart_rate import estimate_max_hr
 from app.services.program_engine import (
     LOADABLE_STATIONS,
     _choose_focus_stations,
@@ -72,3 +73,51 @@ def test_race_week_is_only_the_final_week(db_session):
         if any(wo.workout_type == "race_day" for wo in w.workouts)
     ]
     assert race_day_weeks == [8]
+
+
+def test_threshold_run_replaces_intervals_for_advanced_during_build_and_peak_only(db_session):
+    athlete = Athlete(email="threshold-test@example.com", age=30, experience_tier=ExperienceTier.ADVANCED)
+    db_session.add(athlete)
+    db_session.flush()
+
+    block = generate_training_block(
+        db=db_session, athlete=athlete, length_weeks=8,
+        start_date=date(2026, 1, 1), goal_event_date=date(2026, 2, 26), goal_time_seconds=4200,
+    )
+    weeks_by_number = {w.week_number: w for w in block.weeks}
+
+    assert weeks_by_number[1].phase == "base"
+    assert weeks_by_number[1].workouts[2].title == "Run & Row Training"
+
+    assert weeks_by_number[6].phase == "build"
+    assert weeks_by_number[6].workouts[2].title == "Threshold Run"
+
+    assert weeks_by_number[7].phase == "peak"
+    assert weeks_by_number[7].workouts[2].title == "Threshold Run"
+
+
+def test_beginners_never_get_the_threshold_run(db_session):
+    athlete = Athlete(email="beginner-threshold-test@example.com", age=30, experience_tier=ExperienceTier.BEGINNER)
+    db_session.add(athlete)
+    db_session.flush()
+
+    block = generate_training_block(
+        db=db_session, athlete=athlete, length_weeks=8,
+        start_date=date(2026, 1, 1), goal_event_date=date(2026, 2, 26), goal_time_seconds=4200,
+    )
+    titles = {w.week_number: w.workouts[2].title for w in block.weeks}
+    assert "Threshold Run" not in titles.values()
+
+
+def test_zone_2_blocks_carry_the_athletes_own_hr_target(db_session):
+    athlete = Athlete(email="hr-target-test@example.com", age=30, experience_tier=ExperienceTier.BEGINNER)
+    db_session.add(athlete)
+    db_session.flush()
+
+    block = generate_training_block(
+        db=db_session, athlete=athlete, length_weeks=8,
+        start_date=date(2026, 1, 1), goal_event_date=date(2026, 2, 26), goal_time_seconds=4200,
+    )
+    long_run_block = block.weeks[0].workouts[6].prescription["blocks"][0]
+    max_hr = estimate_max_hr(30)
+    assert long_run_block["target_hr_bpm"] == [round(max_hr * 0.60), round(max_hr * 0.70)]

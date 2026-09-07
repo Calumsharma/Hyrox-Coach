@@ -133,7 +133,7 @@ def easy_run_core(tier: ExperienceTier) -> dict:
     return {
         "warm_up": WARM_UPS["running_drills"],
         "blocks": [
-            {"movement": "zone_2_run", "duration_min": run_minutes},
+            {"movement": "zone_2_run", "duration_min": run_minutes, "target_hr_zone": "z2_aerobic_base"},
             {
                 "movement": "core_circuit",
                 "sets": 3,
@@ -152,10 +152,32 @@ def run_row_intervals(tier: ExperienceTier) -> dict:
     return {
         "warm_up": WARM_UPS["run_row_primer"],
         "blocks": [
-            {"movement": "run_intervals", "detail": f"2 x {long_rep_m}m @ comfortably hard pace, 1 min walk rest"},
-            {"movement": "run_intervals", "detail": "4 x 800m @ faster than HYROX pace, 1 min walk rest"},
-            {"movement": "run_intervals", "detail": f"1 x 1000m @ race pace, immediately into {finisher_m}m @ faster than race pace, 3-4 min rest"},
-            {"movement": "row_intervals", "detail": "2 x 1000m row, 2 min rest — round 1 at 1-2 sec/500m faster than race pace, round 2 at race pace"},
+            {"movement": "run_intervals", "detail": f"2 x {long_rep_m}m @ comfortably hard pace, 1 min walk rest", "target_hr_zone": "z3_tempo"},
+            {"movement": "run_intervals", "detail": "4 x 800m @ faster than HYROX pace, 1 min walk rest", "target_hr_zone": "z5_anaerobic"},
+            {"movement": "run_intervals", "detail": f"1 x 1000m @ race pace, immediately into {finisher_m}m @ faster than race pace, 3-4 min rest", "target_hr_zone": "z4_threshold"},
+            {"movement": "row_intervals", "detail": "2 x 1000m row, 2 min rest — round 1 at 1-2 sec/500m faster than race pace, round 2 at race pace", "target_hr_zone": "z4_threshold"},
+        ],
+        "conditioning": None,
+    }
+
+
+def continuous_threshold_run(tier: ExperienceTier) -> dict:
+    """A steady-state Zone 4 effort — not intervals. Added for Intermediate/Advanced during
+    build/peak weeks per the research: continuous threshold running is what raises sustainable
+    race pace, distinct from the shorter race-pace/VO2max interval work in run_row_intervals.
+    Not present in the athlete's original submitted program — this is the one archetype in
+    this file introduced from the physiology research rather than their real content, done
+    deliberately and flagged as such (see plan doc "Energy Systems & Programming Rigor")."""
+    duration_min = _tier_pick(tier, 20, 25, 30)
+    return {
+        "warm_up": WARM_UPS["run_row_primer"],
+        "blocks": [
+            {
+                "movement": "threshold_run",
+                "duration_min": duration_min,
+                "target_hr_zone": "z4_threshold",
+                "note": "steady continuous effort, not intervals — hold the pace the whole way, don't surge",
+            },
         ],
         "conditioning": None,
     }
@@ -223,7 +245,7 @@ def long_aerobic_run(tier: ExperienceTier) -> dict:
     return {
         "warm_up": WARM_UPS["running_drills"],
         "blocks": [
-            {"movement": "zone_2_run", "duration_min": run_range, "note": "optional: 4 min run / 1 min walk, repeat until total time reached"},
+            {"movement": "zone_2_run", "duration_min": run_range, "target_hr_zone": "z2_aerobic_base", "note": "optional: 4 min run / 1 min walk, repeat until total time reached"},
         ],
         "conditioning": None,
     }
@@ -233,9 +255,9 @@ def deload_long_aerobic_run(tier: ExperienceTier) -> dict:
     """Day 28 style: reduced running volume vs the load week, with Intermediate/Advanced
     getting easy cycling added back — trading impact volume for low-impact aerobic volume."""
     run_range = _tier_pick(tier, "35-45", "45-55", "55-65")
-    blocks = [{"movement": "zone_2_run", "duration_min": run_range, "note": "optional: 4 min run / 1 min walk, repeat until total time reached"}]
+    blocks = [{"movement": "zone_2_run", "duration_min": run_range, "target_hr_zone": "z2_aerobic_base", "note": "optional: 4 min run / 1 min walk, repeat until total time reached"}]
     if tier != ExperienceTier.BEGINNER:
-        blocks.append({"movement": "zone_2_cycle", "duration_min": 15, "note": "maintain Zone 2 heart rate"})
+        blocks.append({"movement": "zone_2_cycle", "duration_min": 15, "target_hr_zone": "z2_aerobic_base", "note": "maintain Zone 2 heart rate"})
     return {"warm_up": WARM_UPS["running_drills"], "blocks": blocks, "conditioning": None}
 
 
@@ -271,7 +293,7 @@ def deload_strength(tier: ExperienceTier) -> dict:
         "conditioning": {
             "format": "choice",
             "options": [
-                {"movement": "zone_2_run", "duration_min": run_range},
+                {"movement": "zone_2_run", "duration_min": run_range, "target_hr_zone": "z2_aerobic_base"},
                 {"format": "amrap_alternative", "movements": ["1000m ski", "1000m row", "50 cal assault bike"]},
             ],
         },
@@ -285,7 +307,7 @@ def deload_station_rotation(tier: ExperienceTier) -> dict:
     return {
         "warm_up": WARM_UPS["loaded_station_primer"],
         "blocks": [
-            {"movement": "run", "distance_m": 1000, "note": "build into Zone 4 pace, 90 sec rest"},
+            {"movement": "run", "distance_m": 1000, "target_hr_zone": "z4_threshold", "note": "build into Zone 4 pace, 90 sec rest"},
             {"movement": "run_ski_intervals", "detail": "2 rounds: 800m run (faster than race pace), 800m ski, 2 min rest"},
             {"movement": "run_row_intervals", "detail": "2 rounds: 800m run (faster than race pace), 800m row, 2 min rest"},
         ],
@@ -314,7 +336,7 @@ def taper_strength(tier: ExperienceTier) -> dict:
         ],
         "conditioning": {
             "format": "choice",
-            "options": [{"movement": "zone_2_run", "duration_min": run_range}, {"format": "mixed_machine_amrap"}],
+            "options": [{"movement": "zone_2_run", "duration_min": run_range, "target_hr_zone": "z2_aerobic_base"}, {"format": "mixed_machine_amrap"}],
         },
     }
 
@@ -352,7 +374,7 @@ def taper_easy_aerobic(tier: ExperienceTier) -> dict:
     run_range = _tier_pick(tier, "25-30", "30-40", "40-45")
     return {
         "warm_up": WARM_UPS["running_drills"],
-        "blocks": [{"movement": "easy_aerobic", "duration_min": run_range, "note": "options: easy run, cycle, erg machines, or a mix"}],
+        "blocks": [{"movement": "easy_aerobic", "duration_min": run_range, "target_hr_zone": "z2_aerobic_base", "note": "options: easy run, cycle, erg machines, or a mix"}],
         "conditioning": None,
     }
 

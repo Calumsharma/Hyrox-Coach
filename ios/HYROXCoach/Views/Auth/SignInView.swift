@@ -75,6 +75,7 @@ struct SignInView: View {
             weightKg: 82,
             division: .openMen,
             experienceTier: .advanced,
+            testedMaxHR: nil,
             predicted5kSeconds: 1080,
             current10kSeconds: 2400,
             selfReportedWeakStations: [.sledPush, .farmersCarry],

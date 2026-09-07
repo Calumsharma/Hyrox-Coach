@@ -66,3 +66,14 @@ class RecoveryTrend(str, enum.Enum):
     RISING = "rising"
     STABLE = "stable"
     FALLING = "falling"
+
+
+class HeartRateZone(str, enum.Enum):
+    """Standard 5-zone %HRmax model. Z3 is the "grey zone" — HYROX programming should mostly
+    avoid living there (see app/services/heart_rate.py and the physiology research notes)."""
+
+    Z1_RECOVERY = "z1_recovery"
+    Z2_AEROBIC_BASE = "z2_aerobic_base"
+    Z3_TEMPO = "z3_tempo"
+    Z4_THRESHOLD = "z4_threshold"
+    Z5_ANAEROBIC = "z5_anaerobic"
