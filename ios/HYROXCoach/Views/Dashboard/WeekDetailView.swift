@@ -17,17 +17,24 @@ struct WeekDetailView: View {
                         .font(.headline)
                     Spacer()
                     Text("Intensity \(Int(currentWeek.actualIntensity * 100))%")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.mutedInk)
                 }
             }
-            .listRowBackground(PhaseStyle.color(for: currentWeek.phase).opacity(0.08))
+            .listRowBackground(PhaseStyle.color(for: currentWeek.phase).opacity(0.12))
 
-            ForEach(currentWeek.workouts.sorted(by: { $0.dayOfWeek < $1.dayOfWeek })) { workout in
-                NavigationLink(value: workout) {
-                    WorkoutRow(workout: workout)
+            Section {
+                ForEach(currentWeek.workouts.sorted(by: { $0.dayOfWeek < $1.dayOfWeek })) { workout in
+                    NavigationLink(value: workout) {
+                        WorkoutRow(workout: workout)
+                    }
                 }
             }
+            .listRowBackground(Theme.concreteDark)
         }
+        .tint(Theme.safetyOrange)
+        .scrollContentBackground(.hidden)
+        .background(Theme.concrete)
+        .listRowSeparatorTint(Theme.stone.opacity(0.35))
         .navigationTitle("Week \(currentWeek.weekNumber)")
         .navigationDestination(for: Workout.self) { workout in
             WorkoutDetailView(workout: workout, viewModel: viewModel)
@@ -49,8 +56,8 @@ private struct WorkoutRow: View {
             .frame(width: 38, height: 38)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(workout.dayName).font(.caption).foregroundStyle(.secondary)
-                Text(workout.title).font(.body)
+                Text(workout.dayName).font(.caption).foregroundStyle(Theme.mutedInk)
+                Text(workout.title).font(.body).foregroundStyle(Theme.ink)
             }
             Spacer()
             if workout.completedAt != nil {

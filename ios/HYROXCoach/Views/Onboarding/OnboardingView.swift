@@ -4,8 +4,9 @@ struct OnboardingView: View {
     @EnvironmentObject private var auth: AuthViewModel
 
     @State private var name = ""
-    @State private var age = 30
+    @State private var age: Int? = 30
     @State private var weightKg = 80.0
+    @State private var heightCm = 175.0
     @State private var division: Division = .openMen
     @State private var predicted5k: Int?
     @State private var current10k: Int?
@@ -13,6 +14,7 @@ struct OnboardingView: View {
     @State private var testedMaxHR: Int?
     @State private var goalTime: Int?
     @State private var goalEventDate = Date().addingTimeInterval(60 * 60 * 24 * 56)
+    @State private var lengthWeeks: Int? = 8
 
     @State private var pastRaces: [PastResultCreate] = []
     @State private var showingAddRace = false
@@ -24,62 +26,55 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("About you") {
+                Section {
                     TextField("Name", text: $name)
-                    Stepper("Age: \(age)", value: $age, in: 14...90)
-                    HStack {
-                        Text("Weight")
-                        Spacer()
-                        TextField("kg", value: $weightKg, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 60)
-                        Text("kg")
-                    }
+                    WheelIntPicker(label: "Age", value: $age, range: 14...90, unit: "yrs", defaultValue: 30)
+                    WeightPicker(label: "Weight", weightKg: $weightKg)
+                    HeightPicker(label: "Height", heightCm: $heightCm)
                     Picker("Division", selection: $division) {
                         ForEach(Division.allCases.filter(\.isSolo)) { division in
                             Text(division.displayName).tag(division)
                         }
                     }
+                } header: {
+                    Label("About You", systemImage: "person.fill")
                 }
+                .listRowBackground(Theme.concreteDark)
 
                 Section {
-                    TimeInputField(label: "Predicted 5k", seconds: $predicted5k)
-                    TimeInputField(label: "Current 10k", seconds: $current10k)
-                    HStack {
-                        Text("Tested max HR")
-                        Spacer()
-                        TextField("optional", value: $testedMaxHR, format: .number)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 70)
-                        Text("bpm")
-                    }
+                    WheelTimePicker(label: "Current 5K PB", seconds: $predicted5k, defaultSeconds: 1500, maxMinutes: 60)
+                    WheelTimePicker(label: "Current 10K PB", seconds: $current10k, defaultSeconds: 3000, maxMinutes: 120)
+                    WheelIntPicker(label: "Tested Max HR", value: $testedMaxHR, range: 120...220, unit: "bpm", defaultValue: 185)
                 } header: {
-                    Text("Current fitness")
+                    Label("Current Fitness", systemImage: "heart.fill")
                 } footer: {
-                    Text("Leave blank and we'll estimate your zones from age instead.")
+                    Text("Leave max HR at the default and we'll estimate your zones from age instead.")
                 }
+                .listRowBackground(Theme.concreteDark)
 
                 Section {
                     ForEach(Array(pastRaces.enumerated()), id: \.offset) { index, race in
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\(race.division.displayName) — \(TimeInputField.format(race.totalTimeSeconds))")
+                                .foregroundStyle(Theme.ink)
                             Text(race.eventDate.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.mutedInk)
                         }
                     }
                     .onDelete { indexSet in
                         pastRaces.remove(atOffsets: indexSet)
                         Task { await refreshSuggestedTier() }
                     }
-                    Button("Add a past race") { showingAddRace = true }
+                    Button("+ Add a Past Race") { showingAddRace = true }
+                        .foregroundStyle(Theme.safetyOrange)
+                        .fontWeight(.bold)
                 } header: {
-                    Text("Past HYROX races")
+                    Label("Past HYROX Races", systemImage: "flag.checkered")
                 } footer: {
                     Text("Include doubles races too — they count toward your experience level even though you train solo.")
                 }
+                .listRowBackground(Theme.concreteDark)
 
                 Section {
                     Picker("Experience level", selection: $experienceTier) {
@@ -88,10 +83,11 @@ struct OnboardingView: View {
                         }
                     }
                 } header: {
-                    Text("Experience level")
+                    Label("Experience Level", systemImage: "chart.line.uptrend.xyaxis")
                 } footer: {
                     Text("We'll suggest a level from your race history, but you can pick a different one.")
                 }
+                .listRowBackground(Theme.concreteDark)
                 .onChange(of: experienceTier) { _, _ in
                     if isApplyingSuggestion {
                         isApplyingSuggestion = false
@@ -107,44 +103,69 @@ struct OnboardingView: View {
                         } label: {
                             HStack {
                                 Text(station.displayName)
-                                    .foregroundStyle(.primary)
+                                    .foregroundStyle(Theme.ink)
                                 Spacer()
                                 if let rank = weakStations.firstIndex(of: station) {
-                                    Text("#\(rank + 1)")
-                                        .foregroundStyle(.secondary)
+                                    Text("\(rank + 1)")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.white)
+                                        .frame(width: 22, height: 22)
+                                        .background(Circle().fill(Theme.safetyOrange))
                                 }
                             }
                         }
                     }
                 } header: {
-                    Text("Weakest stations")
+                    Label("Weakest Stations", systemImage: "exclamationmark.triangle.fill")
                 } footer: {
                     Text("Tap in order, worst first. Your program will lean into these.")
                 }
+                .listRowBackground(Theme.concreteDark)
 
-                Section("Goal") {
-                    TimeInputField(label: "Goal race time", seconds: $goalTime)
+                Section {
+                    WheelTimePicker(label: "Goal Race Time", seconds: $goalTime, defaultSeconds: 4500, maxMinutes: 180)
                     DatePicker("Goal event date", selection: $goalEventDate, displayedComponents: .date)
+                    WheelIntPicker(label: "Program Length", value: $lengthWeeks, range: 4...20, unit: "wks", defaultValue: 8)
+                } header: {
+                    Label("Goal", systemImage: "target")
                 }
+                .listRowBackground(Theme.concreteDark)
 
                 if let error = auth.errorMessage {
                     Text(error).foregroundStyle(.red)
+                        .listRowBackground(Theme.concreteDark)
                 }
 
                 Section {
                     Button {
                         Task { await submit() }
                     } label: {
-                        if auth.isLoading || isSubmittingRaces {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Text("Build my program").frame(maxWidth: .infinity)
+                        Group {
+                            if auth.isLoading || isSubmittingRaces {
+                                ProgressView().tint(Theme.safetyOrange)
+                            } else {
+                                Text("Build My Program")
+                                    .font(.system(size: 15, weight: .black))
+                                    .tracking(1)
+                            }
                         }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
                     }
+                    .buttonStyle(.plain)
+                    .foregroundStyle((name.isEmpty || auth.isLoading || isSubmittingRaces) ? Theme.mutedInk : Theme.safetyOrange)
+                    .listRowBackground(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(Theme.ink)
+                    )
                     .disabled(name.isEmpty || auth.isLoading || isSubmittingRaces)
                 }
             }
-            .navigationTitle("Tell us about you")
+            .tint(Theme.safetyOrange)
+            .scrollContentBackground(.hidden)
+            .background(Theme.concrete)
+            .listRowSeparatorTint(Theme.stone.opacity(0.35))
+            .navigationTitle("Athlete Profile")
             .sheet(isPresented: $showingAddRace) {
                 AddPastRaceView { race in
                     pastRaces.append(race)
@@ -173,8 +194,9 @@ struct OnboardingView: View {
     private func submit() async {
         let payload = AthleteOnboarding(
             name: name,
-            age: age,
+            age: age ?? 30,
             weightKg: weightKg,
+            heightCm: heightCm,
             division: division,
             experienceTier: experienceTier,
             testedMaxHR: testedMaxHR,
@@ -187,9 +209,22 @@ struct OnboardingView: View {
         await auth.completeOnboarding(payload)
         guard auth.errorMessage == nil else { return }
 
+        auth.isBuildingProgram = true
+        defer { auth.isBuildingProgram = false }
+
         isSubmittingRaces = true
         for race in pastRaces {
             _ = try? await APIClient.shared.addPastResult(race)
+        }
+        do {
+            _ = try await APIClient.shared.createTrainingBlock(TrainingBlockCreate(
+                lengthWeeks: lengthWeeks ?? 8,
+                startDate: Date(),
+                goalEventDate: goalEventDate,
+                goalTimeSeconds: goalTime ?? 4500
+            ))
+        } catch {
+            auth.errorMessage = "Profile saved, but the program couldn't be built: \(error.localizedDescription)"
         }
         isSubmittingRaces = false
     }

@@ -1,11 +1,17 @@
 """Turns an athlete profile + block parameters into a full TrainingBlock of weeks and workouts.
 
-Built from the athlete's real PT-designed 8-week HYROX program (not a generic periodization
-synthesis) — see `app/services/movement_library.py` for the actual session content and
-`/Users/calumsharma/.claude/plans/happy-weaving-raven.md` ("Program Engine v2") for the
-design rationale. Deload/taper placement is explicit per block (coach's call, not a fixed
-ratio); the smooth base/build/peak intensity curve still drives `planned_intensity` and the
-phase label for weeks that are neither deload nor taper.
+Session structure comes from `app/services/movement_library.py` (informed by the athlete's
+real coaching program and by published HYROX training structure — see that module's docstring
+and `/Users/calumsharma/.claude/plans/happy-weaving-raven.md`, "Program Engine v2" and v3).
+Deload/taper placement is explicit per block (coach's call, not a fixed ratio); the smooth
+base/build/peak intensity curve still drives `planned_intensity` and the phase label for weeks
+that are neither deload nor taper.
+
+Per-athlete individualization is resolved once per block, here, from three sources, and
+threaded down into `movement_library.py`'s archetype functions rather than baked into them:
+`resolve_pace_profile` (real 5K/10K-derived running paces), `StationReference`'s official
+per-division race loads (real numeric overload targets), and `AccessoryMovement` matched
+against the athlete's ranked weakness (real weakness-specific strength-day content).
 """
 
 from __future__ import annotations
@@ -15,12 +21,35 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.models import Athlete, TrainingBlock, TrainingWeek, Workout
+from app.models import AccessoryMovement, Athlete, StationReference, TrainingBlock, TrainingWeek, Workout
 from app.models.enums import Discipline, ExperienceTier, HeartRateZone, StationSlug, WorkoutType
 from app.services import movement_library as lib
 from app.services.heart_rate import zone_target
-from app.services.periodization import build_intensity_curve
+from app.services.pace import PaceProfile, pace_for_zone, resolve_pace_profile
+from app.services.periodization import build_load_intensity_curve
 from app.services.weakness import rank_weaknesses
+
+# Stations where the reference program prescribes training load *above* race weight (see
+# movement_library.py's "heavier than race weight" notes) — the others ("@ race weight") are
+# deliberately not overloaded. Beginner still gets a small, real overload (the "heavier than
+# race weight" note has never been tier-gated) but a conservative one; Advanced gets the most,
+# consistent with progressively loading connective tissue as training age increases.
+OVERLOAD_ELIGIBLE_STATIONS = {
+    StationSlug.SLED_PUSH.value,
+    StationSlug.SLED_PULL.value,
+    StationSlug.WALL_BALLS.value,
+}
+TIER_OVERLOAD_MULTIPLIER = {
+    ExperienceTier.BEGINNER: 1.05,
+    ExperienceTier.INTERMEDIATE: 1.15,
+    ExperienceTier.ADVANCED: 1.25,
+}
+
+# Deload/taper weeks aren't part of the load curve (see build_load_intensity_curve), so they
+# get fixed, deliberately-low intensities of their own rather than borrowing a number from it.
+DELOAD_INTENSITY = 0.50
+TAPER_INTENSITY = 0.45
+RACE_WEEK_INTENSITY = 0.35
 
 # Tiers/phases where continuous threshold work replaces interval work — see the physiology
 # research notes in the plan doc. Base-phase weeks stay purely aerobic-volume + light strides;
@@ -107,7 +136,17 @@ def _generate_hyrox_block(
 
     weaknesses = rank_weaknesses(athlete, top_n=3)
     tier = athlete.experience_tier or ExperienceTier.BEGINNER
-    curve = build_intensity_curve(length_weeks)
+    pace_profile = resolve_pace_profile(athlete)
+    overload_lookup = _resolve_overload_lookup(db, athlete.division, tier)
+    weakness_accessory = _resolve_weakness_accessory(db, weaknesses[0] if weaknesses else None)
+
+    # The base->build->peak progression is computed over only the weeks that actually carry
+    # load, so a deload or taper week never "eats" a step of the progression (see
+    # build_load_intensity_curve's docstring) — this is what was producing programs that
+    # jumped straight from a deload into peak-intensity training with no build ramp at all
+    # on shorter blocks, exactly the kind of discontinuity that raises injury risk.
+    load_week_numbers = [w for w in range(1, length_weeks + 1) if w not in deload_weeks and w not in taper_weeks]
+    load_curve = build_load_intensity_curve(len(load_week_numbers))
 
     block = TrainingBlock(
         athlete_id=athlete.id,
@@ -123,31 +162,36 @@ def _generate_hyrox_block(
     db.add(block)
     db.flush()
 
-    load_week_index = 0
-    for week_plan in curve:
-        week_number = week_plan.week_number
+    station_rotation_index = 0  # advances on every week with a station day (load AND deload)
+    load_curve_index = 0  # advances only on true load weeks — indexes into load_curve
+    for week_number in range(1, length_weeks + 1):
         is_final_week = week_number == length_weeks
 
         if week_number in taper_weeks:
             phase = "taper"
+            planned_intensity = RACE_WEEK_INTENSITY if is_final_week else TAPER_INTENSITY
             workouts = _race_week(tier) if is_final_week else _taper_week(tier)
         elif week_number in deload_weeks:
             phase = "deload"
-            workouts = _deload_week(tier, weaknesses, load_week_index)
-            load_week_index += 1
+            planned_intensity = DELOAD_INTENSITY
+            workouts = _deload_week(tier, weaknesses, station_rotation_index)
+            station_rotation_index += 1
         else:
+            week_plan = load_curve[load_curve_index]
             phase = week_plan.phase
-            workouts = _load_week(tier, weaknesses, load_week_index, phase)
-            load_week_index += 1
+            planned_intensity = week_plan.planned_intensity
+            workouts = _load_week(tier, weaknesses, station_rotation_index, phase, overload_lookup, weakness_accessory)
+            station_rotation_index += 1
+            load_curve_index += 1
 
-        _attach_hr_targets(athlete, workouts)
+        _attach_targets(athlete, pace_profile, workouts)
 
         week = TrainingWeek(
             block_id=block.id,
             week_number=week_number,
             phase=phase,
-            planned_intensity=week_plan.planned_intensity,
-            actual_intensity=week_plan.planned_intensity,
+            planned_intensity=planned_intensity,
+            actual_intensity=planned_intensity,
         )
         db.add(week)
         db.flush()
@@ -164,18 +208,22 @@ def _workout(day_of_week: int, workout_type: WorkoutType, title: str, prescripti
     return {"day_of_week": day_of_week, "workout_type": workout_type, "title": title, "prescription": prescription}
 
 
-def _attach_hr_targets(athlete: Athlete, workouts: list[dict]) -> None:
-    """Resolves every `target_hr_zone` tag in movement_library.py's output to real bpm numbers
-    for this specific athlete (tested max HR if they have one, Tanaka-estimated otherwise)."""
+def _attach_targets(athlete: Athlete, pace_profile: Optional[PaceProfile], workouts: list[dict]) -> None:
+    """Resolves every `target_hr_zone`/`target_pace_zone` tag in movement_library.py's output
+    to real numbers for this specific athlete: bpm from tested max HR or Tanaka-estimated,
+    pace from their own 5K/10K times (omitted entirely if they've reported neither — see
+    `app/services/pace.py`)."""
 
     for workout in workouts:
         prescription = workout["prescription"]
         for block in prescription.get("blocks") or []:
             _tag_bpm(athlete, block)
+            _tag_pace(pace_profile, block)
         conditioning = prescription.get("conditioning")
         if isinstance(conditioning, dict):
             for option in conditioning.get("options") or []:
                 _tag_bpm(athlete, option)
+                _tag_pace(pace_profile, option)
 
 
 def _tag_bpm(athlete: Athlete, block: dict) -> None:
@@ -185,6 +233,54 @@ def _tag_bpm(athlete: Athlete, block: dict) -> None:
     target = zone_target(athlete, HeartRateZone(zone_value))
     if target.low_bpm is not None:
         block["target_hr_bpm"] = [target.low_bpm, target.high_bpm]
+
+
+def _tag_pace(pace_profile: Optional[PaceProfile], block: dict) -> None:
+    zone_value = block.get("target_pace_zone")
+    if not zone_value or pace_profile is None:
+        return
+    pace_sec = pace_for_zone(pace_profile, zone_value)
+    if pace_sec is not None:
+        block["target_pace_per_km_sec"] = pace_sec
+
+
+def _resolve_overload_lookup(db: Session, division, tier: ExperienceTier) -> dict:
+    """Real numeric overload targets (kg) for the stations the reference program prescribes
+    training heavier than race weight, from `StationReference`'s official per-division loads.
+    Returns {} (gracefully — no overload numbers shown, text note stays as the only guidance)
+    when the athlete hasn't set a division yet."""
+    if division is None:
+        return {}
+    division_key = division.value if hasattr(division, "value") else division
+    multiplier = TIER_OVERLOAD_MULTIPLIER.get(tier, 1.0)
+    lookup: dict[str, float] = {}
+    stations = (
+        db.query(StationReference)
+        .filter(StationReference.slug.in_(OVERLOAD_ELIGIBLE_STATIONS))
+        .all()
+    )
+    for station in stations:
+        loads = (station.division_loads or {}).get(division_key)
+        if not loads:
+            continue
+        base_kg = loads.get("load_kg")
+        if base_kg is None:
+            continue
+        slug_value = station.slug.value if hasattr(station.slug, "value") else station.slug
+        lookup[slug_value] = round(base_kg * multiplier, 1)
+    return lookup
+
+
+def _resolve_weakness_accessory(db: Session, weakest_station: Optional[str]) -> Optional[AccessoryMovement]:
+    """The real `AccessoryMovement` (strength category) that addresses the athlete's #1 ranked
+    weak station, if any — see movement_library.py's `full_body_strength_conditioning`."""
+    if not weakest_station:
+        return None
+    candidates = db.query(AccessoryMovement).filter(AccessoryMovement.category == "strength").all()
+    for movement in candidates:
+        if weakest_station in (movement.addresses_stations or []):
+            return movement
+    return None
 
 
 def _choose_focus_stations(rotation_index: int, weaknesses: list[str]) -> list[str]:
@@ -203,7 +299,14 @@ def _station_day_title(focus_stations: list[str]) -> str:
     return " / ".join(names)
 
 
-def _load_week(tier: ExperienceTier, weaknesses: list[str], load_week_index: int, phase: str) -> list[dict]:
+def _load_week(
+    tier: ExperienceTier,
+    weaknesses: list[str],
+    load_week_index: int,
+    phase: str,
+    overload_lookup: Optional[dict] = None,
+    weakness_accessory: Optional[AccessoryMovement] = None,
+) -> list[dict]:
     focus_stations = _choose_focus_stations(load_week_index, weaknesses)
 
     use_threshold_run = tier in THRESHOLD_RUN_TIERS and phase in THRESHOLD_RUN_PHASES
@@ -214,10 +317,10 @@ def _load_week(tier: ExperienceTier, weaknesses: list[str], load_week_index: int
     )
 
     return [
-        _workout(0, WorkoutType.STRENGTH, "Full Body Strength & Conditioning", lib.full_body_strength_conditioning(tier)),
+        _workout(0, WorkoutType.STRENGTH, "Full Body Strength & Conditioning", lib.full_body_strength_conditioning(tier, weakness_accessory)),
         _workout(1, WorkoutType.AEROBIC, "Easy Run + Core", lib.easy_run_core(tier)),
         wednesday,
-        _workout(3, WorkoutType.STATION_SKILL, _station_day_title(focus_stations), lib.station_rotation(tier, focus_stations)),
+        _workout(3, WorkoutType.STATION_SKILL, _station_day_title(focus_stations), lib.station_rotation(tier, focus_stations, overload_lookup)),
         _workout(4, WorkoutType.MOBILITY, "Active Recovery or Rest/Mobility", lib.active_recovery()),
         _workout(5, WorkoutType.STATION_SKILL, "HYROX Interval Training", lib.hyrox_interval_training(tier)),
         _workout(6, WorkoutType.AEROBIC, "Long Aerobic Run", lib.long_aerobic_run(tier)),

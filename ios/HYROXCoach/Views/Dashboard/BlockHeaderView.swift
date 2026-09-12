@@ -27,10 +27,7 @@ struct BlockHeaderView: View {
                         .stroke(Color.secondary.opacity(0.15), lineWidth: 10)
                     Circle()
                         .trim(from: 0, to: progress)
-                        .stroke(
-                            AngularGradient(colors: [.orange, .red, .purple], center: .center),
-                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                        )
+                        .stroke(Theme.safetyOrange, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 0) {
                         Text("\(completedWeeks)/\(block.lengthWeeks)")
@@ -70,8 +67,9 @@ struct BlockHeaderView: View {
         }
         .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(LinearGradient(colors: [Color.accentColor.opacity(0.15), Color.accentColor.opacity(0.03)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(Theme.concreteDark)
+                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(Theme.stone.opacity(0.4), lineWidth: 1))
         )
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)
@@ -91,10 +89,10 @@ private struct WeaknessChip: View {
 
     var body: some View {
         Label(station?.displayName ?? stationSlug, systemImage: "target")
-            .font(.caption.weight(.medium))
+            .font(.caption.weight(.bold))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(Color.orange.opacity(0.15), in: Capsule())
-            .foregroundStyle(.orange)
+            .background(Theme.ink, in: RoundedRectangle(cornerRadius: 3))
+            .foregroundStyle(Theme.safetyOrange)
     }
 }

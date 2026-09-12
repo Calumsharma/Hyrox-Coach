@@ -36,6 +36,7 @@ struct Athlete: Codable, Identifiable {
     let name: String?
     let age: Int?
     let weightKg: Double?
+    let heightCm: Double?
     let division: Division?
     let experienceTier: ExperienceTier?
     let testedMaxHR: Int?
@@ -50,6 +51,7 @@ struct Athlete: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, email, name, age, division
         case weightKg = "weight_kg"
+        case heightCm = "height_cm"
         case experienceTier = "experience_tier"
         case testedMaxHR = "tested_max_hr"
         case onboardingCompleted = "onboarding_completed"
@@ -66,6 +68,7 @@ struct AthleteOnboarding: Codable {
     let name: String
     let age: Int
     let weightKg: Double
+    let heightCm: Double
     let division: Division
     let experienceTier: ExperienceTier
     let testedMaxHR: Int?
@@ -78,6 +81,7 @@ struct AthleteOnboarding: Codable {
     enum CodingKeys: String, CodingKey {
         case name, age, division
         case weightKg = "weight_kg"
+        case heightCm = "height_cm"
         case experienceTier = "experience_tier"
         case testedMaxHR = "tested_max_hr"
         case predicted5kSeconds = "predicted_5k_seconds"

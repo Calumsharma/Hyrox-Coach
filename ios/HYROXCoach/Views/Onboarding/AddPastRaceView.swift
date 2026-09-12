@@ -20,26 +20,31 @@ struct AddPastRaceView: View {
                             Text(division.displayName).tag(division)
                         }
                     }
-                    TimeInputField(label: "Total time", seconds: $totalTime)
+                    WheelTimePicker(label: "Total Time", seconds: $totalTime, defaultSeconds: 4500, maxMinutes: 180)
                 }
+                .listRowBackground(Theme.concreteDark)
 
                 Section {
                     Toggle("Add station splits", isOn: $includeSplits.animation())
                     if includeSplits {
                         ForEach(StationSlug.allCases) { station in
-                            TimeInputField(
+                            WheelTimePicker(
                                 label: station.displayName,
-                                seconds: Binding(
-                                    get: { splits[station] },
-                                    set: { splits[station] = $0 }
-                                )
+                                seconds: Binding(get: { splits[station] }, set: { splits[station] = $0 }),
+                                defaultSeconds: 120,
+                                maxMinutes: 15
                             )
                         }
                     }
                 } footer: {
                     Text("Splits help us pinpoint exactly which stations are costing you time, instead of relying on your own guess.")
                 }
+                .listRowBackground(Theme.concreteDark)
             }
+            .tint(Theme.safetyOrange)
+            .scrollContentBackground(.hidden)
+            .background(Theme.concrete)
+            .listRowSeparatorTint(Theme.stone.opacity(0.35))
             .navigationTitle("Add a Past Race")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

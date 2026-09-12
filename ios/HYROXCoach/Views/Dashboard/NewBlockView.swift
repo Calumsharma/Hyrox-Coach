@@ -4,7 +4,7 @@ struct NewBlockView: View {
     @ObservedObject var viewModel: TrainingViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @State private var lengthWeeks = 8
+    @State private var lengthWeeks: Int? = 8
     @State private var startDate = Date()
     @State private var goalEventDate = Date().addingTimeInterval(60 * 60 * 24 * 56)
     @State private var goalTime: Int?
@@ -25,32 +25,47 @@ struct NewBlockView: View {
                         Text("We only have a real, coach-built program for HYROX right now — other events are on the roadmap.")
                     }
                 }
+                .listRowBackground(Theme.concreteDark)
 
-                Stepper("Block length: \(lengthWeeks) weeks", value: $lengthWeeks, in: 4...20)
-                DatePicker("Start date", selection: $startDate, displayedComponents: .date)
-                DatePicker("Goal event date", selection: $goalEventDate, displayedComponents: .date)
-                TimeInputField(label: "Goal race time", seconds: $goalTime)
+                Section {
+                    WheelIntPicker(label: "Block Length", value: $lengthWeeks, range: 4...20, unit: "wks", defaultValue: 8)
+                    DatePicker("Start date", selection: $startDate, displayedComponents: .date)
+                    DatePicker("Goal event date", selection: $goalEventDate, displayedComponents: .date)
+                    WheelTimePicker(label: "Goal Race Time", seconds: $goalTime, defaultSeconds: 4500, maxMinutes: 180)
+                }
+                .listRowBackground(Theme.concreteDark)
 
                 if let error = viewModel.errorMessage {
                     Text(error).foregroundStyle(.red)
+                        .listRowBackground(Theme.concreteDark)
                 }
             }
+            .tint(Theme.safetyOrange)
+            .scrollContentBackground(.hidden)
+            .background(Theme.concrete)
+            .listRowSeparatorTint(Theme.stone.opacity(0.35))
             .navigationTitle("New Training Block")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Create") {
+                    Button {
                         Task {
                             await viewModel.createBlock(
-                                lengthWeeks: lengthWeeks,
+                                lengthWeeks: lengthWeeks ?? 8,
                                 startDate: startDate,
                                 goalEventDate: goalEventDate,
                                 goalTimeSeconds: goalTime ?? 4500,
                                 discipline: discipline
                             )
                             if viewModel.errorMessage == nil { dismiss() }
+                        }
+                    } label: {
+                        if viewModel.isLoading {
+                            ProgressView().tint(Theme.safetyOrange)
+                        } else {
+                            Text("Create").fontWeight(.black)
                         }
                     }
                     .disabled(viewModel.isLoading)

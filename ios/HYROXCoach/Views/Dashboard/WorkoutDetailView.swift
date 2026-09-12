@@ -17,16 +17,18 @@ struct WorkoutDetailView: View {
             if currentWorkout.prescription["by_feel"]?.boolValue == true {
                 Section {
                     Text("No fixed prescription — do what your body needs.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.mutedInk)
                 }
+                .listRowBackground(Theme.concreteDark)
             }
 
             if let warmUp = currentWorkout.prescription["warm_up"]?.arrayValue, !warmUp.isEmpty {
                 Section("Warm-Up") {
                     ForEach(Array(warmUp.enumerated()), id: \.offset) { _, item in
-                        Text(item.displayString)
+                        Text(item.displayString).foregroundStyle(Theme.ink)
                     }
                 }
+                .listRowBackground(Theme.concreteDark)
             }
 
             if let blocks = currentWorkout.prescription["blocks"]?.arrayValue, !blocks.isEmpty {
@@ -37,38 +39,53 @@ struct WorkoutDetailView: View {
                         }
                     }
                 }
+                .listRowBackground(Theme.concreteDark)
             }
 
             if let conditioning = currentWorkout.prescription["conditioning"]?.objectValue {
                 Section("Conditioning") {
                     ConditioningView(conditioning: conditioning, library: library)
                 }
+                .listRowBackground(Theme.concreteDark)
             }
 
             if let coolDown = currentWorkout.prescription["cool_down"]?.arrayValue, !coolDown.isEmpty {
                 Section("Cool-Down") {
                     ForEach(Array(coolDown.enumerated()), id: \.offset) { _, item in
-                        Text(item.displayString)
+                        Text(item.displayString).foregroundStyle(Theme.ink)
                     }
                 }
+                .listRowBackground(Theme.concreteDark)
             }
 
             if let completedAt = currentWorkout.completedAt {
                 Section("Logged") {
                     Text("Completed \(completedAt.formatted(date: .abbreviated, time: .shortened))")
+                        .foregroundStyle(Theme.ink)
                     if let notes = currentWorkout.loggedResult?["notes"]?.stringValue, !notes.isEmpty {
-                        Text(notes).foregroundStyle(.secondary)
+                        Text(notes).foregroundStyle(Theme.mutedInk)
                     }
                 }
+                .listRowBackground(Theme.concreteDark)
             } else {
                 Section("Log this workout") {
                     TextField("Notes (how did it feel?)", text: $notes, axis: .vertical)
-                    Button("Mark complete") {
+                        .foregroundStyle(Theme.ink)
+                    Button {
                         Task { await viewModel.logWorkout(currentWorkout, notes: notes) }
+                    } label: {
+                        Text("Mark complete")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(Theme.safetyOrange)
                     }
                 }
+                .listRowBackground(Theme.concreteDark)
             }
         }
+        .tint(Theme.safetyOrange)
+        .scrollContentBackground(.hidden)
+        .background(Theme.concrete)
+        .listRowSeparatorTint(Theme.stone.opacity(0.35))
         .navigationTitle(currentWorkout.title)
         .navigationDestination(for: Exercise.self) { exercise in
             ExerciseDetailView(exercise: exercise)
@@ -103,6 +120,8 @@ private struct BlockRow: View {
         if let distance = block["distance_m"] { parts.append("\(distance.displayString) m") }
         if let tempo = block["tempo"]?.stringValue { parts.append("tempo \(tempo)") }
         if let rest = block["rest_sec"] { parts.append("rest \(rest.displayString)s") }
+        if let overloadLabel { parts.append(overloadLabel) }
+        if let paceLabel { parts.append(paceLabel) }
         if let hrLabel = hrTargetLabel { parts.append(hrLabel) }
         return parts
     }
@@ -128,27 +147,38 @@ private struct BlockRow: View {
         block["detail"]?.stringValue ?? block["note"]?.stringValue
     }
 
+    private var overloadLabel: String? {
+        guard let kg = block["overload_kg"]?.doubleValue else { return nil }
+        return String(format: "%.1fkg", kg)
+    }
+
+    private var paceLabel: String? {
+        guard let sec = block["target_pace_per_km_sec"]?.doubleValue else { return nil }
+        let totalSeconds = Int(sec.rounded())
+        return String(format: "%d:%02d/km", totalSeconds / 60, totalSeconds % 60)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let linkedExercise {
                 NavigationLink(value: linkedExercise) {
                     HStack {
-                        Text(title).font(.body)
-                        Image(systemName: "info.circle").font(.caption).foregroundStyle(.blue)
+                        Text(title).font(.body).foregroundStyle(Theme.ink)
+                        Image(systemName: "info.circle").font(.caption).foregroundStyle(Theme.safetyOrange)
                     }
                 }
             } else {
-                Text(title).font(.body)
+                Text(title).font(.body).foregroundStyle(Theme.ink)
             }
             if !subtitleParts.isEmpty {
                 Text(subtitleParts.joined(separator: " · "))
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.mutedInk)
             }
             if let detail {
                 Text(detail)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.mutedInk)
             }
         }
         .padding(.vertical, 2)
@@ -164,10 +194,12 @@ private struct ConditioningView: View {
             if let format = conditioning["format"]?.stringValue {
                 Text(headline(for: format))
                     .font(.headline)
+                    .foregroundStyle(Theme.ink)
             }
             if let movements = conditioning["movements"]?.arrayValue {
                 ForEach(Array(movements.enumerated()), id: \.offset) { _, movement in
                     Text("• \(movement.displayString)")
+                        .foregroundStyle(Theme.ink)
                 }
             }
             if let options = conditioning["options"]?.arrayValue {

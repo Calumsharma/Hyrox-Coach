@@ -11,7 +11,9 @@
 		07BECDEE98AA16784E706CD4 /* PhaseStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CBED680DA6B73175CD45CDD /* PhaseStyle.swift */; };
 		08BDE0C821B2ED57219904D1 /* WorkoutDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C55989FDAF2656133B76530 /* WorkoutDetailView.swift */; };
 		18386AEB85E3702331E2B05E /* TrainingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FA80288EDF8D9FF64F2AE0 /* TrainingViewModel.swift */; };
+		1E77510A5271A1497F479F11 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B03745197962E8A53E1D235 /* Theme.swift */; };
 		1FF909D24BE0F30FD852240A /* ExerciseDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609D2A311FDF361EA5FBE73E /* ExerciseDetailView.swift */; };
+		2471B19898A2DB85BDEFB800 /* WheelPickers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343308BA1BD8F1C0364E3C96 /* WheelPickers.swift */; };
 		322463D05B758DB2FE972C93 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E953676ECFB6AE4417F878 /* SignInView.swift */; };
 		42AD58BC53A0CFF87A1E3E68 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E78B7E6E65672C6416CAB2FF /* KeychainStore.swift */; };
 		46B4C9324738EDE004453633 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF8C7929B22964376B8BD27 /* RootView.swift */; };
@@ -42,6 +44,8 @@
 		1ECFBDDA32BCD2E4A3AA1DE6 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		200F99AB66DA79193CD7C762 /* AddPastRaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddPastRaceView.swift; sourceTree = "<group>"; };
 		2236AB0D17FF971307F67936 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
+		2B03745197962E8A53E1D235 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		343308BA1BD8F1C0364E3C96 /* WheelPickers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WheelPickers.swift; sourceTree = "<group>"; };
 		44A79F614CF728C6F5132A5B /* BlockHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockHeaderView.swift; sourceTree = "<group>"; };
 		5CBED680DA6B73175CD45CDD /* PhaseStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseStyle.swift; sourceTree = "<group>"; };
 		609D2A311FDF361EA5FBE73E /* ExerciseDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDetailView.swift; sourceTree = "<group>"; };
@@ -122,6 +126,7 @@
 				200F99AB66DA79193CD7C762 /* AddPastRaceView.swift */,
 				0F76408139F6203F1528B318 /* OnboardingView.swift */,
 				BF1577542F8FB9422816727C /* TimeInputField.swift */,
+				343308BA1BD8F1C0364E3C96 /* WheelPickers.swift */,
 			);
 			path = Onboarding;
 			sourceTree = "<group>";
@@ -149,6 +154,7 @@
 			isa = PBXGroup;
 			children = (
 				053B15819B6FB0DC52631160 /* Info.plist */,
+				2B03745197962E8A53E1D235 /* Theme.swift */,
 				D6A89E960D94D7D40903247E /* App */,
 				4B86E18AFB78FCF2CC25FF74 /* Models */,
 				B3DDD4108332E99F2CAD5213 /* Networking */,
@@ -245,10 +251,12 @@
 				46B4C9324738EDE004453633 /* RootView.swift in Sources */,
 				322463D05B758DB2FE972C93 /* SignInView.swift in Sources */,
 				4B25EE10F3A11C1610E10A18 /* Station.swift in Sources */,
+				1E77510A5271A1497F479F11 /* Theme.swift in Sources */,
 				D8D19FD7FC82623DEA0D569A /* TimeInputField.swift in Sources */,
 				4A666DC65309F2F7707331D1 /* Training.swift in Sources */,
 				18386AEB85E3702331E2B05E /* TrainingViewModel.swift in Sources */,
 				5D90212FCAD61D2BBE45A5C2 /* WeekDetailView.swift in Sources */,
+				2471B19898A2DB85BDEFB800 /* WheelPickers.swift in Sources */,
 				08BDE0C821B2ED57219904D1 /* WorkoutDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

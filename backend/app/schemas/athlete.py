@@ -25,6 +25,7 @@ class AthleteOnboarding(BaseModel):
     name: str
     age: int
     weight_kg: float
+    height_cm: float
     division: Division
     experience_tier: ExperienceTier
     tested_max_hr: int | None = None
@@ -42,6 +43,7 @@ class AthleteRead(BaseModel):
     name: str | None
     age: int | None
     weight_kg: float | None
+    height_cm: float | None
     division: Division | None
     experience_tier: ExperienceTier | None
     tested_max_hr: int | None

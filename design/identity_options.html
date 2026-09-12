@@ -1,0 +1,382 @@
+<title>HYROX Coach Identity Options</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;900&family=Archivo+Black&family=Anton&family=Barlow+Condensed:wght@400;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Oswald:wght@400;500;600;700&family=Sora:wght@500;600;700&family=Work+Sans:wght@400;500&display=swap">
+<style>
+  :root {
+    --page-bg: #f4f2ee;
+    --page-surface: #ffffff;
+    --page-border: #e4e1d9;
+    --page-ink: #1a1917;
+    --page-muted: #756f63;
+    --page-accent: #c8431f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page-bg: #131211;
+      --page-surface: #1c1a18;
+      --page-border: #322f2a;
+      --page-ink: #f1efe9;
+      --page-muted: #a39c8e;
+      --page-accent: #e0703f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #131211;
+    --page-surface: #1c1a18;
+    --page-border: #322f2a;
+    --page-ink: #f1efe9;
+    --page-muted: #a39c8e;
+    --page-accent: #e0703f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font-family: "Archivo", sans-serif;
+    padding: 48px 24px 80px;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  .masthead { margin-bottom: 44px; }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--page-accent);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: "Archivo", sans-serif;
+    font-weight: 900;
+    font-size: clamp(28px, 4vw, 44px);
+    line-height: 1.05;
+    margin: 0 0 14px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .masthead p {
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--page-muted);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  #status {
+    position: sticky;
+    top: 16px;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--page-surface);
+    border: 1px solid var(--page-border);
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--page-muted);
+    margin-bottom: 36px;
+  }
+  #status .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--page-border);
+    transition: background 0.2s;
+  }
+  #status.picked .dot { background: var(--page-accent); }
+  #status.picked { color: var(--page-ink); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: 32px;
+  }
+
+  .option {
+    background: var(--page-surface);
+    border: 1px solid var(--page-border);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .option.selected {
+    border-color: var(--option-accent, var(--page-accent));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--option-accent, var(--page-accent)) 22%, transparent);
+  }
+
+  .option-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .option-name {
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+  }
+  .option-index {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--page-muted);
+  }
+
+  .phone {
+    width: 100%;
+    aspect-ratio: 9 / 17.5;
+    border-radius: 32px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 16px 40px -18px rgba(0,0,0,0.45);
+  }
+  .phone-inner {
+    position: absolute; inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 9% 8%;
+  }
+
+  .rationale {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--page-muted);
+    margin: 0;
+  }
+  .rationale b { color: var(--page-ink); font-weight: 700; }
+
+  .choose-btn {
+    appearance: none;
+    border: 1.5px solid var(--page-border);
+    background: transparent;
+    color: var(--page-ink);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    padding: 11px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .choose-btn:hover { border-color: var(--option-accent, var(--page-accent)); }
+  .choose-btn:focus-visible { outline: 2px solid var(--option-accent, var(--page-accent)); outline-offset: 2px; }
+  .option.selected .choose-btn {
+    background: var(--option-accent, var(--page-accent));
+    border-color: var(--option-accent, var(--page-accent));
+    color: #fff;
+  }
+
+  /* ---------- shared mock UI atoms (each phone re-themes via CSS vars) ---------- */
+  .badge {
+    width: 15%; aspect-ratio: 1;
+    border-radius: var(--badge-radius, 50%);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--mock-badge-bg);
+    margin-bottom: 6%;
+    flex-shrink: 0;
+  }
+  .badge svg { width: 46%; height: 46%; }
+  .mock-title {
+    font-family: var(--mock-display-font);
+    font-weight: var(--mock-display-weight, 800);
+    font-size: var(--mock-title-size, 7.2vw);
+    line-height: 1.02;
+    color: var(--mock-ink);
+    letter-spacing: var(--mock-title-tracking, 0);
+    text-transform: var(--mock-title-case, none);
+    margin: 0 0 3%;
+  }
+  .mock-tagline {
+    font-family: var(--mock-body-font);
+    font-size: 2.9vw;
+    line-height: 1.4;
+    color: var(--mock-muted);
+    max-width: 92%;
+    margin: 0 0 8%;
+  }
+  .mock-flourish { margin: 0 0 auto; }
+  .mock-field {
+    width: 100%;
+    padding: 4.2% 5%;
+    border-radius: var(--mock-radius, 12px);
+    background: var(--mock-field-bg);
+    border: 1px solid var(--mock-field-border, transparent);
+    color: var(--mock-field-text);
+    font-family: var(--mock-body-font);
+    font-size: 2.9vw;
+    margin-bottom: 3.5%;
+  }
+  .mock-button {
+    width: 100%;
+    padding: 4.4% 5%;
+    border-radius: var(--mock-radius, 12px);
+    background: var(--mock-button-bg);
+    color: var(--mock-button-text, #fff);
+    font-family: var(--mock-display-font);
+    font-weight: 700;
+    font-size: 3vw;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+</style>
+
+<div class="wrap">
+  <div class="masthead">
+    <p class="eyebrow">Visual identity &middot; 5 directions</p>
+    <h1>Which HYROX Coach should this be?</h1>
+    <p>Same screen, same copy, five different worlds it could live in — timing scoreboard, warehouse gym, race bib, sports-science readout, or 5am-start warmth. Pick one to run with, or mix specific elements across them.</p>
+  </div>
+
+  <div id="status"><span class="dot"></span><span id="status-text">No direction selected yet — tap "Choose" on any card</span></div>
+
+  <div class="grid" id="grid">
+
+    <!-- A: SPLIT TIME -->
+    <div class="option" data-name="Split Time" style="--option-accent:#ff3b30">
+      <div class="option-head"><span class="option-name">A &middot; Split Time</span><span class="option-index">01/05</span></div>
+      <div class="phone" style="background:#0b0a09;
+        --mock-ink:#f5f2ec; --mock-muted:#8c877d; --mock-display-font:'Oswald',sans-serif; --mock-body-font:'IBM Plex Mono',monospace;
+        --mock-display-weight:600; --mock-title-tracking:0.02em; --mock-title-case:uppercase; --mock-title-size:8.6vw;
+        --mock-field-bg:#19100f; --mock-field-border:#3a1613; --mock-field-text:#f5f2ec;
+        --mock-button-bg:#ff3b30; --mock-button-text:#0b0a09; --badge-radius:6px; --mock-radius:6px;
+        --mock-badge-bg:#19100f;">
+        <div class="phone-inner">
+          <div class="badge" style="border:1px solid #ff3b30;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ff3b30" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          </div>
+          <div class="mock-title">HYROX<br>Coach</div>
+          <div class="mock-tagline">Recovery-driven training, built&nbsp;around your race.</div>
+          <div class="mock-flourish">
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:9.5vw; font-weight:600; color:#ff3b30; letter-spacing:0.02em; margin-bottom:2%;">59:42<span style="opacity:.4">.18</span></div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:2.4vw; color:#5c5750; text-transform:uppercase; letter-spacing:0.14em;">Projected finish &middot; Station 06 of 08</div>
+          </div>
+          <div class="mock-field">Email</div>
+          <div class="mock-button">CONTINUE</div>
+        </div>
+      </div>
+      <p class="rationale"><b>Every HYROX finish comes down to the clock.</b> Scoreboard red, tabular mono digits, a live split readout instead of a generic hero — the app reads like the timing screen at the venue.</p>
+      <button class="choose-btn">Choose Split Time</button>
+    </div>
+
+    <!-- B: CONCRETE & CHALK -->
+    <div class="option" data-name="Concrete &amp; Chalk" style="--option-accent:#e8570f">
+      <div class="option-head"><span class="option-name">B &middot; Concrete &amp; Chalk</span><span class="option-index">02/05</span></div>
+      <div class="phone" style="background:#d8d3c7;
+        --mock-ink:#1c1b17; --mock-muted:#655f52; --mock-display-font:'Archivo Black',sans-serif; --mock-body-font:'Archivo',sans-serif;
+        --mock-title-tracking:-0.01em; --mock-title-size:8vw;
+        --mock-field-bg:#c7c1b2; --mock-field-border:#a49d8b; --mock-field-text:#1c1b17;
+        --mock-button-bg:#1c1b17; --mock-button-text:#e8570f; --badge-radius:3px; --mock-radius:3px;
+        --mock-badge-bg:#1c1b17;">
+        <div class="phone-inner">
+          <div style="position:absolute; top:6%; right:8%; font-family:'Archivo',sans-serif; font-weight:700; font-size:2.3vw; letter-spacing:0.12em; color:#8b8474; border:1.5px solid #8b8474; padding:2% 4%; transform:rotate(3deg);">STATION 04</div>
+          <div class="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#e8570f" stroke-width="2.5"><path d="M4 12h4M16 12h4M8 8v8M16 8v8M8 12h8"/></svg>
+          </div>
+          <div class="mock-title">HYROX<br>COACH</div>
+          <div class="mock-tagline">Recovery-driven training, built around your race.</div>
+          <div class="mock-flourish"></div>
+          <div class="mock-field">Email</div>
+          <div class="mock-button">CONTINUE</div>
+        </div>
+      </div>
+      <p class="rationale"><b>Built like the warehouse gyms HYROX actually happens in.</b> Chalky concrete grey, stamped safety-orange, stenciled station tags — raw and functional instead of glossy.</p>
+      <button class="choose-btn">Choose Concrete &amp; Chalk</button>
+    </div>
+
+    <!-- C: BIB NUMBER -->
+    <div class="option" data-name="Bib Number" style="--option-accent:#d81e2c">
+      <div class="option-head"><span class="option-name">C &middot; Bib Number</span><span class="option-index">03/05</span></div>
+      <div class="phone" style="background:#f7f2e7;
+        --mock-ink:#171410; --mock-muted:#8f8672; --mock-display-font:'Anton',sans-serif; --mock-body-font:'Barlow Condensed',sans-serif;
+        --mock-title-size:9.5vw; --mock-title-case:uppercase; --mock-title-tracking:0.01em;
+        --mock-field-bg:#efe8d6; --mock-field-border:#d9cfb4; --mock-field-text:#171410;
+        --mock-button-bg:#d81e2c; --mock-button-text:#f7f2e7; --badge-radius:50%; --mock-radius:4px;
+        --mock-badge-bg:#171410;">
+        <div class="phone-inner">
+          <div style="position:absolute; top:7%; right:8%; width:22%; aspect-ratio:1; border-radius:50%; border:2.5px solid #171410; display:flex; align-items:center; justify-content:center; font-family:'Anton',sans-serif; font-size:4.6vw; color:#171410;">247</div>
+          <div class="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f7f2e7" stroke-width="2.5"><path d="M12 2 L14 9 L21 9 L15.5 13.5 L17.5 21 L12 16.5 L6.5 21 L8.5 13.5 L3 9 L10 9 Z"/></svg>
+          </div>
+          <div class="mock-title">Hyrox<br>Coach</div>
+          <div class="mock-tagline" style="font-size:3.1vw;">Recovery-driven training, built around your race.</div>
+          <div class="mock-flourish"></div>
+          <div class="mock-field">Email</div>
+          <div class="mock-button">CONTINUE</div>
+        </div>
+      </div>
+      <p class="rationale"><b>Borrows the race-day bib and event-poster language athletes already know</b> — cream paper stock, stamped numerals, one race-red. Editorial, not app-generic.</p>
+      <button class="choose-btn">Choose Bib Number</button>
+    </div>
+
+    <!-- D: HEART RATE -->
+    <div class="option" data-name="Heart Rate" style="--option-accent:#ed8936">
+      <div class="option-head"><span class="option-name">D &middot; Heart Rate</span><span class="option-index">04/05</span></div>
+      <div class="phone" style="background:#0d1b2a;
+        --mock-ink:#eef2f6; --mock-muted:#7c93ab; --mock-display-font:'Sora',sans-serif; --mock-body-font:'IBM Plex Mono',monospace;
+        --mock-display-weight:700; --mock-title-size:7.4vw;
+        --mock-field-bg:#132638; --mock-field-border:#25415a; --mock-field-text:#eef2f6;
+        --mock-button-bg:linear-gradient(90deg,#4fd1c5,#ed8936); --mock-button-text:#0d1b2a; --badge-radius:50%; --mock-radius:10px;
+        --mock-badge-bg:#132638;">
+        <div class="phone-inner">
+          <div class="badge" style="border:1.5px solid #4fd1c5;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#4fd1c5" stroke-width="2"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>
+          </div>
+          <div class="mock-title">HYROX<br>Coach</div>
+          <div class="mock-tagline">Recovery-driven training, built&nbsp;around your race.</div>
+          <div class="mock-flourish">
+            <svg viewBox="0 0 200 40" style="width:100%; height:auto; margin-bottom:4%;"><polyline points="0,20 30,20 42,6 54,34 66,20 200,20" fill="none" stroke="#4fd1c5" stroke-width="2"/></svg>
+            <div style="display:flex; gap:6%; margin-bottom:6%;">
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:2.3vw; padding:1.5% 3%; border-radius:20px; background:rgba(79,209,197,0.15); color:#4fd1c5;">Z2 · 61%</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:2.3vw; padding:1.5% 3%; border-radius:20px; background:rgba(237,137,54,0.15); color:#ed8936;">142 BPM</span>
+            </div>
+          </div>
+          <div class="mock-field">Email</div>
+          <div class="mock-button">CONTINUE</div>
+        </div>
+      </div>
+      <p class="rationale"><b>Leads with the physiology.</b> Zones and bpm are the actual mechanism behind this app's programming, not decoration — graphite and a teal-to-orange zone gradient instead of one accent color.</p>
+      <button class="choose-btn">Choose Heart Rate</button>
+    </div>
+
+    <!-- E: SUNRISE SESSION -->
+    <div class="option" data-name="Sunrise Session" style="--option-accent:#ff7a59">
+      <div class="option-head"><span class="option-name">E &middot; Sunrise Session</span><span class="option-index">05/05</span></div>
+      <div class="phone" style="background:linear-gradient(180deg,#241b3f 0%,#5c3d63 38%,#c15b4f 66%,#ffb37a 100%);
+        --mock-ink:#fff7ee; --mock-muted:rgba(255,247,238,0.72); --mock-display-font:'Fraunces',serif; --mock-body-font:'Work Sans',sans-serif;
+        --mock-display-weight:600; --mock-title-size:8vw; --mock-title-tracking:-0.01em;
+        --mock-field-bg:rgba(255,247,238,0.14); --mock-field-border:rgba(255,247,238,0.3); --mock-field-text:#fff7ee;
+        --mock-button-bg:#fff7ee; --mock-button-text:#5c2f27; --badge-radius:50%; --mock-radius:12px;
+        --mock-badge-bg:rgba(255,247,238,0.16);">
+        <div class="phone-inner">
+          <div class="badge" style="border:1.5px solid #ffd479;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ffd479" stroke-width="2"><circle cx="12" cy="17" r="4"/><path d="M12 2v3M4.2 8.2l2 2M19.8 8.2l-2 2M2 17h2M20 17h2"/></svg>
+          </div>
+          <div class="mock-title">Hyrox<br>Coach</div>
+          <div class="mock-tagline">Recovery-driven training, built around your race.</div>
+          <div class="mock-flourish">
+            <div style="font-family:'Work Sans',sans-serif; font-size:2.6vw; letter-spacing:0.1em; text-transform:uppercase; color:#ffd479;">First session &middot; 05:47 AM</div>
+          </div>
+          <div class="mock-field">Email</div>
+          <div class="mock-button">CONTINUE</div>
+        </div>
+      </div>
+      <p class="rationale"><b>For 5am-start culture.</b> Aspirational and warm rather than aggressive — a serif display face and a real dawn gradient instead of gym-branding grit.</p>
+      <button class="choose-btn">Choose Sunrise Session</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('status-text');
+  document.querySelectorAll('.option').forEach(card => {
+    card.querySelector('.choose-btn').addEventListener('click', () => {
+      document.querySelectorAll('.option').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      statusEl.classList.add('picked');
+      statusText.textContent = 'Selected: ' + card.dataset.name;
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+</script>

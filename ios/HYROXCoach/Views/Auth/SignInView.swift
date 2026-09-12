@@ -3,66 +3,118 @@ import SwiftUI
 struct SignInView: View {
     @EnvironmentObject private var auth: AuthViewModel
     @State private var email = ""
+    @FocusState private var emailFocused: Bool
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ZStack {
+            Theme.concrete.ignoresSafeArea()
 
-            VStack(spacing: 8) {
-                Text("HYROX Coach")
-                    .font(.largeTitle.bold())
-                Text("Recovery-driven training, built around your race.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
+            VStack(spacing: 28) {
+                Spacer()
 
-            VStack(spacing: 12) {
-                TextField("Email", text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .padding()
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                HStack {
+                    Text("STATION 00")
+                        .font(.system(size: 12, weight: .bold))
+                        .tracking(2)
+                        .foregroundStyle(Theme.stone)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.stone, lineWidth: 1.5))
+                        .rotationEffect(.degrees(-2))
+                    Spacer()
+                }
+                .padding(.horizontal, 32)
 
-                Button {
-                    Task { await auth.signIn(email: email) }
-                } label: {
-                    if auth.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("Continue")
-                            .frame(maxWidth: .infinity)
+                VStack(spacing: 18) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(Theme.ink)
+                            .frame(width: 76, height: 76)
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundStyle(Theme.safetyOrange)
+                    }
+
+                    VStack(spacing: 8) {
+                        Text("HYROX\nCOACH")
+                            .font(Theme.stencilTitle(38))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(Theme.ink)
+                            .lineSpacing(-2)
+                        Text("Recovery-driven training, built around your race.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.mutedInk)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(email.isEmpty || auth.isLoading)
 
-                if let error = auth.errorMessage {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                }
+                VStack(spacing: 14) {
+                    TextField("", text: $email, prompt: Text("Email").foregroundStyle(Theme.mutedInk.opacity(0.7)))
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($emailFocused)
+                        .foregroundStyle(Theme.ink)
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .fill(Theme.concreteDark)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                        .strokeBorder(emailFocused ? Theme.safetyOrange : Theme.stone, lineWidth: emailFocused ? 2 : 1)
+                                )
+                        )
 
-                #if DEBUG
-                Button("Seed demo data (debug)") {
-                    Task { await runDebugSeed() }
-                }
-                .font(.footnote)
+                    Button {
+                        Task { await auth.signIn(email: email) }
+                    } label: {
+                        Group {
+                            if auth.isLoading {
+                                ProgressView().tint(Theme.safetyOrange)
+                            } else {
+                                Text("Continue")
+                                    .font(.system(size: 15, weight: .black))
+                                    .tracking(1.5)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(email.isEmpty ? Theme.mutedInk : Theme.safetyOrange)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(Theme.ink)
+                    )
+                    .disabled(email.isEmpty || auth.isLoading)
 
-                Button("Sign in only, skip onboarding (debug)") {
-                    Task { await auth.signIn(email: "onboarding-test+\(Int(Date().timeIntervalSince1970))@hyroxcoach.app") }
+                    if let error = auth.errorMessage {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+
+                    #if DEBUG
+                    VStack(spacing: 8) {
+                        Button("Seed demo data (debug)") {
+                            Task { await runDebugSeed() }
+                        }
+                        Button("Sign in only, skip onboarding (debug)") {
+                            Task { await auth.signIn(email: "onboarding-test+\(Int(Date().timeIntervalSince1970))@hyroxcoach.app") }
+                        }
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(Theme.mutedInk)
+                    .padding(.top, 8)
+                    #endif
                 }
-                .font(.footnote)
-                #endif
+                .padding(.horizontal, 32)
+
+                Spacer()
+                Spacer()
             }
-            .padding(.horizontal, 32)
-
-            Spacer()
-            Spacer()
         }
     }
 
@@ -73,6 +125,7 @@ struct SignInView: View {
             name: "Demo Athlete",
             age: 32,
             weightKg: 82,
+            heightCm: 180,
             division: .openMen,
             experienceTier: .advanced,
             testedMaxHR: nil,
