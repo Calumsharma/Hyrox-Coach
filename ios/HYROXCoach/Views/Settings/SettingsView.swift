@@ -17,7 +17,7 @@ struct SettingsView: View {
                             HStack {
                                 Text("Today's Recovery")
                                     .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(Theme.ink)
+                                    .foregroundStyle(Theme.textPrimary)
                                 Spacer()
                                 Text(trendLabel(recoveryScore.trend))
                                     .font(.caption.weight(.bold))
@@ -25,17 +25,17 @@ struct SettingsView: View {
                             }
                             Text("\(Int(recoveryScore.compositeScore)) / 100")
                                 .font(.title.weight(.black))
-                                .foregroundStyle(Theme.ink)
+                                .foregroundStyle(Theme.textPrimary)
                         }
                         .padding(.vertical, 4)
                     } else {
                         Text("No recovery data yet — connect Apple Health and sync to get started.")
-                            .foregroundStyle(Theme.mutedInk)
+                            .foregroundStyle(Theme.textSecondary)
                     }
                 } header: {
                     Label("Recovery", systemImage: "heart.fill")
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 Section {
                     Button {
@@ -53,14 +53,14 @@ struct SettingsView: View {
                     }
                     .disabled(isSyncing)
                     if let syncMessage {
-                        Text(syncMessage).font(.caption).foregroundStyle(Theme.mutedInk)
+                        Text(syncMessage).font(.caption).foregroundStyle(Theme.textSecondary)
                     }
                 } header: {
                     Label("Wearable Data", systemImage: "applewatch")
                 } footer: {
                     Text("Reads HRV, resting heart rate, and sleep from the Health app to adjust your training automatically. Works best with an Apple Watch on a real device — the Simulator has no health data of its own.")
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 Section {
                     Button {
@@ -71,12 +71,12 @@ struct SettingsView: View {
                             .foregroundStyle(Theme.safetyOrange)
                     }
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             }
             .tint(Theme.safetyOrange)
             .scrollContentBackground(.hidden)
-            .background(Theme.concrete)
-            .listRowSeparatorTint(Theme.stone.opacity(0.35))
+            .background(Theme.background)
+            .listRowSeparatorTint(Theme.hairline)
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -128,7 +128,7 @@ struct SettingsView: View {
     private func trendColor(_ trend: RecoveryTrend) -> Color {
         switch trend {
         case .rising: return .green
-        case .stable: return Theme.mutedInk
+        case .stable: return Theme.textSecondary
         case .falling: return Theme.safetyOrange
         }
     }

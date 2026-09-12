@@ -22,7 +22,7 @@ struct AddPastRaceView: View {
                     }
                     WheelTimePicker(label: "Total Time", seconds: $totalTime, defaultSeconds: 4500, maxMinutes: 180)
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 Section {
                     Toggle("Add station splits", isOn: $includeSplits.animation())
@@ -39,12 +39,12 @@ struct AddPastRaceView: View {
                 } footer: {
                     Text("Splits help us pinpoint exactly which stations are costing you time, instead of relying on your own guess.")
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             }
             .tint(Theme.safetyOrange)
             .scrollContentBackground(.hidden)
-            .background(Theme.concrete)
-            .listRowSeparatorTint(Theme.stone.opacity(0.35))
+            .background(Theme.background)
+            .listRowSeparatorTint(Theme.hairline)
             .navigationTitle("Add a Past Race")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

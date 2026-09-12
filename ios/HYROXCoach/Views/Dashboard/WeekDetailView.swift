@@ -17,7 +17,7 @@ struct WeekDetailView: View {
                         .font(.headline)
                     Spacer()
                     Text("Intensity \(Int(currentWeek.actualIntensity * 100))%")
-                        .foregroundStyle(Theme.mutedInk)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
             .listRowBackground(PhaseStyle.color(for: currentWeek.phase).opacity(0.12))
@@ -29,12 +29,12 @@ struct WeekDetailView: View {
                     }
                 }
             }
-            .listRowBackground(Theme.concreteDark)
+            .listRowBackground(Theme.surface)
         }
         .tint(Theme.safetyOrange)
         .scrollContentBackground(.hidden)
-        .background(Theme.concrete)
-        .listRowSeparatorTint(Theme.stone.opacity(0.35))
+        .background(Theme.background)
+        .listRowSeparatorTint(Theme.hairline)
         .navigationTitle("Week \(currentWeek.weekNumber)")
         .navigationDestination(for: Workout.self) { workout in
             WorkoutDetailView(workout: workout, viewModel: viewModel)
@@ -56,8 +56,8 @@ private struct WorkoutRow: View {
             .frame(width: 38, height: 38)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(workout.dayName).font(.caption).foregroundStyle(Theme.mutedInk)
-                Text(workout.title).font(.body).foregroundStyle(Theme.ink)
+                Text(workout.dayName).font(.caption).foregroundStyle(Theme.textSecondary)
+                Text(workout.title).font(.body).foregroundStyle(Theme.textPrimary)
             }
             Spacer()
             if workout.completedAt != nil {

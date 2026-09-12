@@ -8,52 +8,61 @@ struct BlockHeaderView: View {
         return Calendar.current.dateComponents([.day], from: Date(), to: goalDate).day
     }
 
-    private var completedWeeks: Int {
-        block.weeks.filter { week in
-            week.workouts.allSatisfy { $0.completedAt != nil || $0.workoutType == .rest }
-        }.count
+    private var currentWeekNumber: Int {
+        let daysElapsed = Calendar.current.dateComponents([.day], from: block.startDate, to: Date()).day ?? 0
+        return max(1, min(block.lengthWeeks, daysElapsed / 7 + 1))
     }
 
-    private var progress: Double {
-        guard block.lengthWeeks > 0 else { return 0 }
-        return Double(completedWeeks) / Double(block.lengthWeeks)
+    private var currentWeek: TrainingWeek? {
+        block.weeks.first(where: { $0.weekNumber == currentWeekNumber })
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            HStack(alignment: .center, spacing: 20) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.secondary.opacity(0.15), lineWidth: 10)
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(Theme.safetyOrange, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    VStack(spacing: 0) {
-                        Text("\(completedWeeks)/\(block.lengthWeeks)")
-                            .font(.headline.monospacedDigit())
-                        Text("weeks")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(width: 84, height: 84)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    if let days = daysToEvent {
-                        Text(days >= 0 ? "\(days) days to race day" : "Race day has passed")
-                            .font(.title3.bold())
-                    } else {
-                        Text("Training block")
-                            .font(.title3.bold())
-                    }
-                    if let goalTime = block.goalTimeSeconds {
-                        Label(Self.formatTime(goalTime), systemImage: "flag.checkered")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("HYROX TRAINING BLOCK")
+                    .font(Theme.labelMono(10))
+                    .tracking(1.6)
+                    .foregroundStyle(Theme.textSecondary)
                 Spacer()
+            }
+
+            Text(String(format: "WEEK %02d / %02d", currentWeekNumber, block.lengthWeeks))
+                .font(Theme.stencilTitle(24))
+                .foregroundStyle(Theme.textPrimary)
+
+            Rectangle().fill(Theme.hairline).frame(height: 1)
+
+            HStack(spacing: 3) {
+                ForEach(block.weeks) { week in
+                    Rectangle()
+                        .fill(tickColor(for: week))
+                        .frame(height: 24)
+                        .overlay(
+                            week.weekNumber == currentWeekNumber
+                                ? RoundedRectangle(cornerRadius: 1).stroke(Theme.safetyOrange, lineWidth: 1)
+                                : nil
+                        )
+                }
+            }
+
+            HStack(spacing: 1) {
+                statTile(
+                    value: daysToEvent.map { $0 >= 0 ? "\($0)" : "—" } ?? "—",
+                    label: "DAYS TO RACE"
+                )
+                statTile(
+                    value: currentWeek.map { "\(Int($0.actualIntensity * 100))%" } ?? "—",
+                    label: "ACTUAL INTENSITY"
+                )
+            }
+            .background(Theme.hairline)
+            .overlay(RoundedRectangle(cornerRadius: 2).stroke(Theme.hairline, lineWidth: 1))
+
+            if let goalTime = block.goalTimeSeconds {
+                Text(Self.formatTime(goalTime))
+                    .font(Theme.dataMono(12))
+                    .foregroundStyle(Theme.textSecondary)
             }
 
             if !block.targetWeaknesses.isEmpty {
@@ -65,20 +74,36 @@ struct BlockHeaderView: View {
                 }
             }
         }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(Theme.concreteDark)
-                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(Theme.stone.opacity(0.4), lineWidth: 1))
-        )
+        .padding(18)
+        .background(Theme.surface)
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-        .padding(.vertical, 4)
+    }
+
+    private func tickColor(for week: TrainingWeek) -> Color {
+        if week.weekNumber < currentWeekNumber { return Theme.safetyOrange }
+        if week.weekNumber == currentWeekNumber { return Theme.safetyOrange.opacity(0.35) }
+        return Theme.hairline
+    }
+
+    private func statTile(value: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(Theme.dataMono(22, weight: .bold))
+                .foregroundStyle(Theme.textPrimary)
+            Text(label)
+                .font(Theme.labelMono(8.5))
+                .tracking(1.1)
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Theme.surface)
     }
 
     static func formatTime(_ seconds: Int) -> String {
-        String(format: "%d:%02d:%02d goal", seconds / 3600, (seconds % 3600) / 60, seconds % 60)
+        String(format: "GOAL %d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60)
     }
 }
 
@@ -88,9 +113,10 @@ private struct WeaknessChip: View {
     private var station: StationSlug? { StationSlug(rawValue: stationSlug) }
 
     var body: some View {
-        Label(station?.displayName ?? stationSlug, systemImage: "target")
-            .font(.caption.weight(.bold))
-            .padding(.horizontal, 10)
+        Text((station?.displayName ?? stationSlug).uppercased())
+            .font(Theme.labelMono(9.5, weight: .bold))
+            .tracking(0.6)
+            .padding(.horizontal, 9)
             .padding(.vertical, 6)
             .background(Theme.ink, in: RoundedRectangle(cornerRadius: 3))
             .foregroundStyle(Theme.safetyOrange)

@@ -7,19 +7,19 @@ struct SignInView: View {
 
     var body: some View {
         ZStack {
-            Theme.concrete.ignoresSafeArea()
+            Theme.background.ignoresSafeArea()
 
             VStack(spacing: 28) {
                 Spacer()
 
                 HStack {
                     Text("HYROX TRAINING")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(Theme.labelMono(11))
                         .tracking(2)
-                        .foregroundStyle(Theme.stone)
+                        .foregroundStyle(Theme.textSecondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.stone, lineWidth: 1.5))
+                        .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.hairline, lineWidth: 1.5))
                         .rotationEffect(.degrees(-2))
                     Spacer()
                 }
@@ -28,7 +28,8 @@ struct SignInView: View {
                 VStack(spacing: 18) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(Theme.ink)
+                            .fill(Theme.surface)
+                            .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(Theme.hairline, lineWidth: 1))
                             .frame(width: 76, height: 76)
                         Image(systemName: "bolt.fill")
                             .font(.system(size: 32, weight: .bold))
@@ -39,30 +40,30 @@ struct SignInView: View {
                         Text("S9")
                             .font(Theme.stencilTitle(38))
                             .multilineTextAlignment(.center)
-                            .foregroundStyle(Theme.ink)
+                            .foregroundStyle(Theme.textPrimary)
                         Text("Recovery-driven training, built around your race.")
                             .font(.subheadline)
-                            .foregroundStyle(Theme.mutedInk)
+                            .foregroundStyle(Theme.textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 40)
                     }
                 }
 
                 VStack(spacing: 14) {
-                    TextField("", text: $email, prompt: Text("Email").foregroundStyle(Theme.mutedInk.opacity(0.7)))
+                    TextField("", text: $email, prompt: Text("Email").foregroundStyle(Theme.textSecondary.opacity(0.6)))
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .focused($emailFocused)
-                        .foregroundStyle(Theme.ink)
+                        .foregroundStyle(Theme.textPrimary)
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(Theme.concreteDark)
+                                .fill(Theme.surface)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                        .strokeBorder(emailFocused ? Theme.safetyOrange : Theme.stone, lineWidth: emailFocused ? 2 : 1)
+                                        .strokeBorder(emailFocused ? Theme.safetyOrange : Theme.hairline, lineWidth: emailFocused ? 2 : 1)
                                 )
                         )
 
@@ -71,10 +72,10 @@ struct SignInView: View {
                     } label: {
                         Group {
                             if auth.isLoading {
-                                ProgressView().tint(Theme.safetyOrange)
+                                ProgressView().tint(Theme.ink)
                             } else {
                                 Text("Continue")
-                                    .font(.system(size: 15, weight: .black))
+                                    .font(Theme.labelMono(14, weight: .bold))
                                     .tracking(1.5)
                             }
                         }
@@ -82,10 +83,10 @@ struct SignInView: View {
                         .padding(.vertical, 14)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(email.isEmpty ? Theme.mutedInk : Theme.safetyOrange)
+                    .foregroundStyle(Theme.ink)
                     .background(
                         RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(Theme.ink)
+                            .fill(email.isEmpty ? Theme.stone.opacity(0.3) : Theme.safetyOrange)
                     )
                     .disabled(email.isEmpty || auth.isLoading)
 
@@ -105,7 +106,7 @@ struct SignInView: View {
                         }
                     }
                     .font(.footnote)
-                    .foregroundStyle(Theme.mutedInk)
+                    .foregroundStyle(Theme.textSecondary)
                     .padding(.top, 8)
                     #endif
                 }

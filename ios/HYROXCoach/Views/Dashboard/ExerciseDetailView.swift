@@ -7,24 +7,24 @@ struct ExerciseDetailView: View {
         List {
             Section {
                 Text(exercise.description)
-                    .foregroundStyle(Theme.ink)
+                    .foregroundStyle(Theme.textPrimary)
             }
-            .listRowBackground(Theme.concreteDark)
+            .listRowBackground(Theme.surface)
 
             if !exercise.cues.isEmpty {
                 Section("Coaching Cues") {
                     ForEach(exercise.cues, id: \.self) { cue in
                         Label(cue, systemImage: "checkmark.circle")
-                            .foregroundStyle(Theme.ink)
+                            .foregroundStyle(Theme.textPrimary)
                     }
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             }
 
             Section {
                 if exercise.videoSource == "none" || exercise.videoURL == nil {
                     Label("Video coming soon", systemImage: "video.slash")
-                        .foregroundStyle(Theme.mutedInk)
+                        .foregroundStyle(Theme.textSecondary)
                 } else if let url = exercise.videoURL, let link = URL(string: url) {
                     Link(destination: link) {
                         Label("Watch demo", systemImage: "play.circle.fill")
@@ -32,11 +32,11 @@ struct ExerciseDetailView: View {
                     .tint(Theme.safetyOrange)
                 }
             }
-            .listRowBackground(Theme.concreteDark)
+            .listRowBackground(Theme.surface)
         }
         .scrollContentBackground(.hidden)
-        .background(Theme.concrete)
-        .listRowSeparatorTint(Theme.stone.opacity(0.35))
+        .background(Theme.background)
+        .listRowSeparatorTint(Theme.hairline)
         .navigationTitle(exercise.name)
     }
 }

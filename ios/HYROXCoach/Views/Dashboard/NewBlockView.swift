@@ -25,7 +25,7 @@ struct NewBlockView: View {
                         Text("We only have a real, coach-built program for HYROX right now — other events are on the roadmap.")
                     }
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 Section {
                     WheelIntPicker(label: "Block Length", value: $lengthWeeks, range: 4...20, unit: "wks", defaultValue: 8)
@@ -33,17 +33,17 @@ struct NewBlockView: View {
                     DatePicker("Goal event date", selection: $goalEventDate, displayedComponents: .date)
                     WheelTimePicker(label: "Goal Race Time", seconds: $goalTime, defaultSeconds: 4500, maxMinutes: 180)
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 if let error = viewModel.errorMessage {
                     Text(error).foregroundStyle(.red)
-                        .listRowBackground(Theme.concreteDark)
+                        .listRowBackground(Theme.surface)
                 }
             }
             .tint(Theme.safetyOrange)
             .scrollContentBackground(.hidden)
-            .background(Theme.concrete)
-            .listRowSeparatorTint(Theme.stone.opacity(0.35))
+            .background(Theme.background)
+            .listRowSeparatorTint(Theme.hairline)
             .navigationTitle("New Training Block")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

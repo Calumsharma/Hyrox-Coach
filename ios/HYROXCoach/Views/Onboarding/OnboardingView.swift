@@ -39,7 +39,7 @@ struct OnboardingView: View {
                 } header: {
                     Label("About You", systemImage: "person.fill")
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 Section {
                     WheelTimePicker(label: "Current 5K PB", seconds: $predicted5k, defaultSeconds: 1500, maxMinutes: 60)
@@ -50,16 +50,16 @@ struct OnboardingView: View {
                 } footer: {
                     Text("Leave max HR at the default and we'll estimate your zones from age instead.")
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 Section {
                     ForEach(Array(pastRaces.enumerated()), id: \.offset) { index, race in
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\(race.division.displayName) — \(TimeInputField.format(race.totalTimeSeconds))")
-                                .foregroundStyle(Theme.ink)
+                                .foregroundStyle(Theme.textPrimary)
                             Text(race.eventDate.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption)
-                                .foregroundStyle(Theme.mutedInk)
+                                .foregroundStyle(Theme.textSecondary)
                         }
                     }
                     .onDelete { indexSet in
@@ -74,7 +74,7 @@ struct OnboardingView: View {
                 } footer: {
                     Text("Include doubles races too — they count toward your experience level even though you train solo.")
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 Section {
                     Picker("Experience level", selection: $experienceTier) {
@@ -87,7 +87,7 @@ struct OnboardingView: View {
                 } footer: {
                     Text("We'll suggest a level from your race history, but you can pick a different one.")
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
                 .onChange(of: experienceTier) { _, _ in
                     if isApplyingSuggestion {
                         isApplyingSuggestion = false
@@ -103,12 +103,12 @@ struct OnboardingView: View {
                         } label: {
                             HStack {
                                 Text(station.displayName)
-                                    .foregroundStyle(Theme.ink)
+                                    .foregroundStyle(Theme.textPrimary)
                                 Spacer()
                                 if let rank = weakStations.firstIndex(of: station) {
                                     Text("\(rank + 1)")
                                         .font(.caption.bold())
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(Theme.ink)
                                         .frame(width: 22, height: 22)
                                         .background(Circle().fill(Theme.safetyOrange))
                                 }
@@ -120,7 +120,7 @@ struct OnboardingView: View {
                 } footer: {
                     Text("Tap in order, worst first. Your program will lean into these.")
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 Section {
                     WheelTimePicker(label: "Goal Race Time", seconds: $goalTime, defaultSeconds: 4500, maxMinutes: 180)
@@ -129,11 +129,11 @@ struct OnboardingView: View {
                 } header: {
                     Label("Goal", systemImage: "target")
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
 
                 if let error = auth.errorMessage {
                     Text(error).foregroundStyle(.red)
-                        .listRowBackground(Theme.concreteDark)
+                        .listRowBackground(Theme.surface)
                 }
 
                 Section {
@@ -142,10 +142,10 @@ struct OnboardingView: View {
                     } label: {
                         Group {
                             if auth.isLoading || isSubmittingRaces {
-                                ProgressView().tint(Theme.safetyOrange)
+                                ProgressView().tint(Theme.ink)
                             } else {
                                 Text("Build My Program")
-                                    .font(.system(size: 15, weight: .black))
+                                    .font(Theme.labelMono(14, weight: .black))
                                     .tracking(1)
                             }
                         }
@@ -153,18 +153,18 @@ struct OnboardingView: View {
                         .padding(.vertical, 6)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle((name.isEmpty || auth.isLoading || isSubmittingRaces) ? Theme.mutedInk : Theme.safetyOrange)
+                    .foregroundStyle(Theme.ink)
                     .listRowBackground(
                         RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(Theme.ink)
+                            .fill((name.isEmpty || auth.isLoading || isSubmittingRaces) ? Theme.stone.opacity(0.3) : Theme.safetyOrange)
                     )
                     .disabled(name.isEmpty || auth.isLoading || isSubmittingRaces)
                 }
             }
             .tint(Theme.safetyOrange)
             .scrollContentBackground(.hidden)
-            .background(Theme.concrete)
-            .listRowSeparatorTint(Theme.stone.opacity(0.35))
+            .background(Theme.background)
+            .listRowSeparatorTint(Theme.hairline)
             .navigationTitle("Athlete Profile")
             .sheet(isPresented: $showingAddRace) {
                 AddPastRaceView { race in

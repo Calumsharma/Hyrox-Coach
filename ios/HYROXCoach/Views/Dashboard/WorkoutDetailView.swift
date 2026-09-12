@@ -108,18 +108,18 @@ struct WorkoutDetailView: View {
             if currentWorkout.prescription["by_feel"]?.boolValue == true {
                 Section {
                     Text("No fixed prescription — do what your body needs.")
-                        .foregroundStyle(Theme.mutedInk)
+                        .foregroundStyle(Theme.textSecondary)
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             }
 
             if let warmUp = currentWorkout.prescription["warm_up"]?.arrayValue, !warmUp.isEmpty {
                 Section("Warm-Up") {
                     ForEach(Array(warmUp.enumerated()), id: \.offset) { _, item in
-                        Text(item.displayString).foregroundStyle(Theme.ink)
+                        Text(item.displayString).foregroundStyle(Theme.textPrimary)
                     }
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             }
 
             if let blocks = currentWorkout.prescription["blocks"]?.arrayValue, !blocks.isEmpty {
@@ -130,40 +130,40 @@ struct WorkoutDetailView: View {
                         }
                     }
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             }
 
             if let conditioning = currentWorkout.prescription["conditioning"]?.objectValue {
                 Section("Conditioning") {
                     ConditioningView(conditioning: conditioning, library: library)
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             }
 
             if let coolDown = currentWorkout.prescription["cool_down"]?.arrayValue, !coolDown.isEmpty {
                 Section("Cool-Down") {
                     ForEach(Array(coolDown.enumerated()), id: \.offset) { _, item in
-                        Text(item.displayString).foregroundStyle(Theme.ink)
+                        Text(item.displayString).foregroundStyle(Theme.textPrimary)
                     }
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             }
 
             if let completedAt = currentWorkout.completedAt {
                 Section("Logged") {
                     Text("Completed \(completedAt.formatted(date: .abbreviated, time: .shortened))")
-                        .foregroundStyle(Theme.ink)
+                        .foregroundStyle(Theme.textPrimary)
                     ForEach(loggedBlockSummaries, id: \.self) { summary in
-                        Text(summary).font(.subheadline).foregroundStyle(Theme.mutedInk)
+                        Text(summary).font(.subheadline).foregroundStyle(Theme.textSecondary)
                     }
                     if let conditioningSummary {
-                        Text(conditioningSummary).font(.subheadline).foregroundStyle(Theme.mutedInk)
+                        Text(conditioningSummary).font(.subheadline).foregroundStyle(Theme.textSecondary)
                     }
                     if let notes = currentWorkout.loggedResult?["notes"]?.stringValue, !notes.isEmpty {
-                        Text(notes).foregroundStyle(Theme.mutedInk)
+                        Text(notes).foregroundStyle(Theme.textSecondary)
                     }
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             } else {
                 Section("Log this workout") {
                     ForEach(loggableBlocks, id: \.index) { entry in
@@ -178,7 +178,7 @@ struct WorkoutDetailView: View {
                         ConditioningLogRow(rounds: $conditioningRounds, extraReps: $conditioningExtraReps, rpe: $conditioningRPE)
                     }
                     TextField("Notes (how did it feel?)", text: $notes, axis: .vertical)
-                        .foregroundStyle(Theme.ink)
+                        .foregroundStyle(Theme.textPrimary)
                     Button {
                         isSubmittingLog = true
                         Task {
@@ -198,13 +198,13 @@ struct WorkoutDetailView: View {
                     }
                     .disabled(isSubmittingLog)
                 }
-                .listRowBackground(Theme.concreteDark)
+                .listRowBackground(Theme.surface)
             }
         }
         .tint(Theme.safetyOrange)
         .scrollContentBackground(.hidden)
-        .background(Theme.concrete)
-        .listRowSeparatorTint(Theme.stone.opacity(0.35))
+        .background(Theme.background)
+        .listRowSeparatorTint(Theme.hairline)
         .navigationTitle(currentWorkout.title)
         .navigationDestination(for: Exercise.self) { exercise in
             ExerciseDetailView(exercise: exercise)
@@ -221,7 +221,7 @@ private struct BlockLogRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink)
+            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.textPrimary)
             HStack(spacing: 10) {
                 if showWeight {
                     TextField("kg", text: $entry.weightKg)
@@ -234,7 +234,7 @@ private struct BlockLogRow: View {
                         .keyboardType(.numberPad)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 50)
-                    Text(":").foregroundStyle(Theme.mutedInk)
+                    Text(":").foregroundStyle(Theme.textSecondary)
                     TextField("sec", text: $entry.seconds)
                         .keyboardType(.numberPad)
                         .textFieldStyle(.roundedBorder)
@@ -243,7 +243,7 @@ private struct BlockLogRow: View {
                 Spacer()
                 Text(String(format: "RPE %.1f", entry.rpe))
                     .font(.caption)
-                    .foregroundStyle(Theme.mutedInk)
+                    .foregroundStyle(Theme.textSecondary)
             }
             Slider(value: $entry.rpe, in: 1...10, step: 0.5)
                 .tint(Theme.safetyOrange)
@@ -259,13 +259,13 @@ private struct ConditioningLogRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Conditioning").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink)
+            Text("Conditioning").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.textPrimary)
             HStack(spacing: 10) {
                 TextField("Rounds", text: $rounds)
                     .keyboardType(.numberPad)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 70)
-                Text("+").foregroundStyle(Theme.mutedInk)
+                Text("+").foregroundStyle(Theme.textSecondary)
                 TextField("Reps", text: $extraReps)
                     .keyboardType(.numberPad)
                     .textFieldStyle(.roundedBorder)
@@ -273,7 +273,7 @@ private struct ConditioningLogRow: View {
                 Spacer()
                 Text(String(format: "RPE %.1f", rpe))
                     .font(.caption)
-                    .foregroundStyle(Theme.mutedInk)
+                    .foregroundStyle(Theme.textSecondary)
             }
             Slider(value: $rpe, in: 1...10, step: 0.5)
                 .tint(Theme.safetyOrange)
@@ -361,22 +361,22 @@ private struct BlockRow: View {
             if let linkedExercise {
                 NavigationLink(value: linkedExercise) {
                     HStack {
-                        Text(title).font(.body).foregroundStyle(Theme.ink)
+                        Text(title).font(.body).foregroundStyle(Theme.textPrimary)
                         Image(systemName: "info.circle").font(.caption).foregroundStyle(Theme.safetyOrange)
                     }
                 }
             } else {
-                Text(title).font(.body).foregroundStyle(Theme.ink)
+                Text(title).font(.body).foregroundStyle(Theme.textPrimary)
             }
             if !subtitleParts.isEmpty {
                 Text(subtitleParts.joined(separator: " · "))
                     .font(.subheadline)
-                    .foregroundStyle(Theme.mutedInk)
+                    .foregroundStyle(Theme.textSecondary)
             }
             if let detail {
                 Text(detail)
                     .font(.footnote)
-                    .foregroundStyle(Theme.mutedInk)
+                    .foregroundStyle(Theme.textSecondary)
             }
             if let progressionNote {
                 Text(progressionNote)
@@ -397,12 +397,12 @@ private struct ConditioningView: View {
             if let format = conditioning["format"]?.stringValue {
                 Text(headline(for: format))
                     .font(.headline)
-                    .foregroundStyle(Theme.ink)
+                    .foregroundStyle(Theme.textPrimary)
             }
             if let movements = conditioning["movements"]?.arrayValue {
                 ForEach(Array(movements.enumerated()), id: \.offset) { _, movement in
                     Text("• \(movement.displayString)")
-                        .foregroundStyle(Theme.ink)
+                        .foregroundStyle(Theme.textPrimary)
                 }
             }
             if let options = conditioning["options"]?.arrayValue {

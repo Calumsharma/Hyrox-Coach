@@ -27,7 +27,7 @@ struct RootView: View {
 private struct BuildingProgramView: View {
     var body: some View {
         ZStack {
-            Theme.concrete.ignoresSafeArea()
+            Theme.background.ignoresSafeArea()
             VStack(spacing: 18) {
                 ProgressView()
                     .tint(Theme.safetyOrange)
@@ -35,10 +35,10 @@ private struct BuildingProgramView: View {
                 Text("BUILDING YOUR PROGRAM")
                     .font(.system(size: 13, weight: .black))
                     .tracking(1.5)
-                    .foregroundStyle(Theme.ink)
+                    .foregroundStyle(Theme.textPrimary)
                 Text("Periodizing your block around your weaknesses and goal race.")
                     .font(.subheadline)
-                    .foregroundStyle(Theme.mutedInk)
+                    .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 48)
             }

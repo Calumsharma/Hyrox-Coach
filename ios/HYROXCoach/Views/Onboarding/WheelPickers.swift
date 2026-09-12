@@ -10,13 +10,13 @@ private func wheelLabel(_ text: String) -> some View {
     Text(text.uppercased())
         .font(.system(size: 11, weight: .bold))
         .tracking(1.2)
-        .foregroundStyle(Theme.mutedInk)
+        .foregroundStyle(Theme.textSecondary)
 }
 
 private func wheelUnit(_ text: String) -> some View {
     Text(text)
         .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(Theme.mutedInk)
+        .foregroundStyle(Theme.textSecondary)
 }
 
 /// Minutes/seconds wheel pair bound to a total-seconds value, e.g. race and split times.
