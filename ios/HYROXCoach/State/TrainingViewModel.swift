@@ -38,12 +38,9 @@ final class TrainingViewModel: ObservableObject {
         }
     }
 
-    func logWorkout(_ workout: Workout, notes: String) async {
+    func logWorkout(_ workout: Workout, payload: WorkoutLogUpdate) async {
         do {
-            let updated = try await APIClient.shared.logWorkout(
-                id: workout.id,
-                loggedResult: ["notes": .string(notes)]
-            )
+            let updated = try await APIClient.shared.logWorkout(id: workout.id, payload: payload)
             applyUpdatedWorkout(updated)
         } catch {
             errorMessage = error.localizedDescription

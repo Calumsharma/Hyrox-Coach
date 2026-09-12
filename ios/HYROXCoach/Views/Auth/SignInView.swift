@@ -13,7 +13,7 @@ struct SignInView: View {
                 Spacer()
 
                 HStack {
-                    Text("STATION 00")
+                    Text("HYROX TRAINING")
                         .font(.system(size: 12, weight: .bold))
                         .tracking(2)
                         .foregroundStyle(Theme.stone)
@@ -36,11 +36,10 @@ struct SignInView: View {
                     }
 
                     VStack(spacing: 8) {
-                        Text("HYROX\nCOACH")
+                        Text("S9")
                             .font(Theme.stencilTitle(38))
                             .multilineTextAlignment(.center)
                             .foregroundStyle(Theme.ink)
-                            .lineSpacing(-2)
                         Text("Recovery-driven training, built around your race.")
                             .font(.subheadline)
                             .foregroundStyle(Theme.mutedInk)
@@ -102,7 +101,7 @@ struct SignInView: View {
                             Task { await runDebugSeed() }
                         }
                         Button("Sign in only, skip onboarding (debug)") {
-                            Task { await auth.signIn(email: "onboarding-test+\(Int(Date().timeIntervalSince1970))@hyroxcoach.app") }
+                            Task { await auth.signIn(email: "onboarding-test+\(Int(Date().timeIntervalSince1970))@s9.app") }
                         }
                     }
                     .font(.footnote)
@@ -120,7 +119,7 @@ struct SignInView: View {
 
     #if DEBUG
     private func runDebugSeed() async {
-        await auth.signIn(email: "demo+\(Int(Date().timeIntervalSince1970))@hyroxcoach.app")
+        await auth.signIn(email: "demo+\(Int(Date().timeIntervalSince1970))@s9.app")
         await auth.completeOnboarding(AthleteOnboarding(
             name: "Demo Athlete",
             age: 32,

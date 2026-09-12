@@ -5,7 +5,7 @@ from app.api import athletes, auth, exercises, recovery, stations, training, wor
 from app.db import Base, engine
 from app.seed_data import seed
 
-app = FastAPI(title="HYROX Coach API")
+app = FastAPI(title="S9 API")
 
 app.add_middleware(
     CORSMiddleware,

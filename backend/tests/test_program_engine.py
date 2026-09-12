@@ -89,7 +89,7 @@ def test_threshold_run_replaces_intervals_for_advanced_during_build_and_peak_onl
     weeks_by_number = {w.week_number: w for w in block.weeks}
 
     assert weeks_by_number[1].phase == "base"
-    assert weeks_by_number[1].workouts[2].title == "Run & Row Training"
+    assert weeks_by_number[1].workouts[2].title == "The Grind"
 
     # Weeks 5-7 are the 4th-6th *load* weeks (week 4 is deload, week 8 is taper) — the
     # base->build->peak progression runs over just the 6 real load weeks, so it's compressed

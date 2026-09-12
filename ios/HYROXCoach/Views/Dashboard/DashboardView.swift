@@ -4,6 +4,7 @@ struct DashboardView: View {
     @EnvironmentObject private var auth: AuthViewModel
     @StateObject private var viewModel = TrainingViewModel()
     @State private var showingNewBlock = false
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
@@ -21,12 +22,18 @@ struct DashboardView: View {
             .navigationTitle("Your Block")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Sign out") { auth.signOut() }
-                        .font(.subheadline.weight(.bold))
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                    }
                 }
             }
             .sheet(isPresented: $showingNewBlock) {
                 NewBlockView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
             }
             .task {
                 await viewModel.loadCurrentBlock()

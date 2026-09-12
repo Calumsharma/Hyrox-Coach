@@ -108,11 +108,16 @@ final class APIClient {
         try await request("/training-blocks/current", method: "GET")
     }
 
-    func logWorkout(id: String, loggedResult: [String: JSONValue]) async throws -> Workout {
-        struct Request: Codable { let loggedResult: [String: JSONValue]
-            enum CodingKeys: String, CodingKey { case loggedResult = "logged_result" }
-        }
-        return try await request("/workouts/\(id)/log", method: "PATCH", body: Request(loggedResult: loggedResult))
+    func logWorkout(id: String, payload: WorkoutLogUpdate) async throws -> Workout {
+        try await request("/workouts/\(id)/log", method: "PATCH", body: payload)
+    }
+
+    func submitRecoveryReading(_ payload: RecoveryReadingCreate) async throws -> RecoveryUpdateResponse {
+        try await request("/recovery/readings", method: "POST", body: payload)
+    }
+
+    func getRecoveryStatus() async throws -> RecoveryScoreRead? {
+        try await request("/recovery/status", method: "GET")
     }
 
     // MARK: - Core request plumbing

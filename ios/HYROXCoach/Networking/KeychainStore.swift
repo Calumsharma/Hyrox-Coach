@@ -4,7 +4,7 @@ import Security
 /// Minimal Keychain wrapper for storing the auth token. Overkill would be a full
 /// Keychain library; this app only ever stores one small secret string.
 enum KeychainStore {
-    private static let service = "com.hyroxcoach.app"
+    private static let service = "com.s9.app"
     private static let account = "access_token"
 
     static func save(_ token: String) {

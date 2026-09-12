@@ -313,30 +313,30 @@ def _load_week(
     wednesday = (
         _workout(2, WorkoutType.RUN, "Threshold Run", lib.continuous_threshold_run(tier))
         if use_threshold_run
-        else _workout(2, WorkoutType.RUN, "Run & Row Training", lib.run_row_intervals(tier))
+        else _workout(2, WorkoutType.RUN, "The Grind", lib.run_row_intervals(tier))
     )
 
     return [
-        _workout(0, WorkoutType.STRENGTH, "Full Body Strength & Conditioning", lib.full_body_strength_conditioning(tier, weakness_accessory)),
-        _workout(1, WorkoutType.AEROBIC, "Easy Run + Core", lib.easy_run_core(tier)),
+        _workout(0, WorkoutType.STRENGTH, "Forge", lib.full_body_strength_conditioning(tier, weakness_accessory)),
+        _workout(1, WorkoutType.AEROBIC, "Engine", lib.easy_run_core(tier)),
         wednesday,
-        _workout(3, WorkoutType.STATION_SKILL, _station_day_title(focus_stations), lib.station_rotation(tier, focus_stations, overload_lookup)),
-        _workout(4, WorkoutType.MOBILITY, "Active Recovery or Rest/Mobility", lib.active_recovery()),
-        _workout(5, WorkoutType.STATION_SKILL, "HYROX Interval Training", lib.hyrox_interval_training(tier)),
-        _workout(6, WorkoutType.AEROBIC, "Long Aerobic Run", lib.long_aerobic_run(tier)),
+        _workout(3, WorkoutType.STATION_SKILL, f"Load Day: {_station_day_title(focus_stations)}", lib.station_rotation(tier, focus_stations, overload_lookup)),
+        _workout(4, WorkoutType.MOBILITY, "Reset", lib.active_recovery()),
+        _workout(5, WorkoutType.STATION_SKILL, "Race Simulation", lib.hyrox_interval_training(tier)),
+        _workout(6, WorkoutType.AEROBIC, "Long Haul", lib.long_aerobic_run(tier)),
     ]
 
 
 def _deload_week(tier: ExperienceTier, weaknesses: list[str], load_week_index: int) -> list[dict]:
     focus_stations = _choose_focus_stations(load_week_index, weaknesses)
     return [
-        _workout(0, WorkoutType.STRENGTH, "Strength Training + Easy Aerobic", lib.deload_strength(tier)),
-        _workout(1, WorkoutType.AEROBIC, "Easy Run + Core", lib.easy_run_core(tier)),
-        _workout(2, WorkoutType.RUN, "Intervals + Easy Ergs", lib.run_row_intervals(tier)),
-        _workout(3, WorkoutType.STATION_SKILL, f"Station Performance + Cycle ({_station_day_title(focus_stations)})", lib.deload_station_rotation(tier)),
-        _workout(4, WorkoutType.MOBILITY, "Active Recovery or Rest/Mobility", lib.active_recovery()),
-        _workout(5, WorkoutType.STATION_SKILL, "HYROX Endurance", lib.hyrox_interval_training(tier)),
-        _workout(6, WorkoutType.AEROBIC, "Long Aerobic Run", lib.deload_long_aerobic_run(tier)),
+        _workout(0, WorkoutType.STRENGTH, "Forge — Deload", lib.deload_strength(tier)),
+        _workout(1, WorkoutType.AEROBIC, "Engine", lib.easy_run_core(tier)),
+        _workout(2, WorkoutType.RUN, "The Grind — Deload", lib.run_row_intervals(tier)),
+        _workout(3, WorkoutType.STATION_SKILL, f"Load Day — Deload: {_station_day_title(focus_stations)}", lib.deload_station_rotation(tier)),
+        _workout(4, WorkoutType.MOBILITY, "Reset", lib.active_recovery()),
+        _workout(5, WorkoutType.STATION_SKILL, "Race Simulation — Deload", lib.hyrox_interval_training(tier)),
+        _workout(6, WorkoutType.AEROBIC, "Long Haul — Deload", lib.deload_long_aerobic_run(tier)),
     ]
 
 
@@ -345,12 +345,12 @@ def _taper_week(tier: ExperienceTier) -> list[dict]:
     than one taper week) — no direct source content for this case, so it reuses the deload
     station pattern (no loaded work) and taper strength."""
     return [
-        _workout(0, WorkoutType.STRENGTH, "Taper Strength", lib.taper_strength(tier)),
-        _workout(1, WorkoutType.AEROBIC, "Easy Run + Core", lib.easy_run_core(tier)),
-        _workout(2, WorkoutType.RUN, "Run & Row Training (reduced)", lib.run_row_intervals(tier)),
-        _workout(3, WorkoutType.STATION_SKILL, "Station Touch + Cycle", lib.deload_station_rotation(tier)),
-        _workout(4, WorkoutType.MOBILITY, "Active Recovery or Rest/Mobility", lib.active_recovery()),
-        _workout(5, WorkoutType.STATION_SKILL, "HYROX Touch", lib.hyrox_interval_training(tier)),
+        _workout(0, WorkoutType.STRENGTH, "Forge — Taper", lib.taper_strength(tier)),
+        _workout(1, WorkoutType.AEROBIC, "Engine", lib.easy_run_core(tier)),
+        _workout(2, WorkoutType.RUN, "The Grind — Taper", lib.run_row_intervals(tier)),
+        _workout(3, WorkoutType.STATION_SKILL, "Load Day — Touch", lib.deload_station_rotation(tier)),
+        _workout(4, WorkoutType.MOBILITY, "Reset", lib.active_recovery()),
+        _workout(5, WorkoutType.STATION_SKILL, "Race Simulation — Touch", lib.hyrox_interval_training(tier)),
         _workout(6, WorkoutType.AEROBIC, "Easy Aerobic", lib.taper_easy_aerobic(tier)),
     ]
 

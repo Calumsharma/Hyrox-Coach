@@ -19,6 +19,37 @@ class TrainingBlockCreate(BaseModel):
     taper_week_numbers: list[int] | None = None
 
 
+class SetLog(BaseModel):
+    reps: int | None = None
+    weight_kg: float | None = None
+
+
+class BlockLog(BaseModel):
+    """One logged block, matched back to `prescription["blocks"][index]` by position."""
+
+    index: int
+    sets: list[SetLog] = []
+    actual_time_sec: int | None = None
+    actual_distance_m: float | None = None
+    rpe: float | None = None  # 1-10, Borg CR10-style perceived exertion
+
+
+class ConditioningLog(BaseModel):
+    """For AMRAP/rounds-format conditioning, where the meaningful outcome isn't sets/reps
+    but how far the athlete got and how hard it was."""
+
+    rounds_completed: int | None = None
+    extra_reps: int | None = None
+    duration_sec: int | None = None
+    rpe: float | None = None
+
+
+class WorkoutLogUpdate(BaseModel):
+    notes: str | None = None
+    blocks: list[BlockLog] = []
+    conditioning: ConditioningLog | None = None
+
+
 class WorkoutRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str

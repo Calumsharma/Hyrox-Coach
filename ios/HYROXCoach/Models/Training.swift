@@ -65,6 +65,46 @@ struct TrainingBlock: Codable, Identifiable {
     }
 }
 
+// MARK: - Structured logging
+
+struct SetLog: Codable {
+    var reps: Int?
+    var weightKg: Double?
+    enum CodingKeys: String, CodingKey { case reps; case weightKg = "weight_kg" }
+}
+
+struct BlockLog: Codable {
+    let index: Int
+    var sets: [SetLog] = []
+    var actualTimeSec: Int?
+    var actualDistanceM: Double?
+    var rpe: Double?
+    enum CodingKeys: String, CodingKey {
+        case index, sets, rpe
+        case actualTimeSec = "actual_time_sec"
+        case actualDistanceM = "actual_distance_m"
+    }
+}
+
+struct ConditioningLog: Codable {
+    var roundsCompleted: Int?
+    var extraReps: Int?
+    var durationSec: Int?
+    var rpe: Double?
+    enum CodingKeys: String, CodingKey {
+        case roundsCompleted = "rounds_completed"
+        case extraReps = "extra_reps"
+        case durationSec = "duration_sec"
+        case rpe
+    }
+}
+
+struct WorkoutLogUpdate: Codable {
+    var notes: String?
+    var blocks: [BlockLog] = []
+    var conditioning: ConditioningLog?
+}
+
 struct TrainingBlockCreate: Codable {
     let lengthWeeks: Int
     let startDate: Date

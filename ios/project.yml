@@ -1,6 +1,6 @@
 name: HYROXCoach
 options:
-  bundleIdPrefix: com.hyroxcoach
+  bundleIdPrefix: com.s9
   deploymentTarget:
     iOS: "17.0"
 settings:
@@ -19,14 +19,22 @@ targets:
     info:
       path: HYROXCoach/Info.plist
       properties:
+        CFBundleDisplayName: S9
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        NSHealthShareUsageDescription: "Reads your heart rate variability, resting heart rate, and sleep so your training block can adjust to how recovered you are."
+    entitlements:
+      path: HYROXCoach/HYROXCoach.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+    dependencies:
+      - sdk: HealthKit.framework
     settings:
       base:
-        PRODUCT_NAME: HYROXCoach
-        PRODUCT_BUNDLE_IDENTIFIER: com.hyroxcoach.app
+        PRODUCT_NAME: S9
+        PRODUCT_BUNDLE_IDENTIFIER: com.s9.app
         MARKETING_VERSION: "0.1.0"
         TARGETED_DEVICE_FAMILY: "1"

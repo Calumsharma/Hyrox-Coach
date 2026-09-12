@@ -1,19 +1,15 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from app.auth import get_current_athlete
 from app.db import get_db
 from app.models import Athlete, TrainingBlock, TrainingWeek, Workout
-from app.schemas.training import WorkoutRead
+from app.schemas.training import WorkoutLogUpdate, WorkoutRead
+from app.services.progression_engine import apply_progression
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
-
-
-class WorkoutLogUpdate(BaseModel):
-    logged_result: dict
 
 
 def _get_owned_workout(workout_id: str, athlete: Athlete, db: Session) -> Workout:
@@ -38,8 +34,11 @@ def log_workout(
     db: Session = Depends(get_db),
 ):
     workout = _get_owned_workout(workout_id, athlete, db)
-    workout.logged_result = payload.logged_result
+    workout.logged_result = payload.model_dump(exclude_none=True)
     workout.completed_at = datetime.utcnow()
     db.commit()
     db.refresh(workout)
+
+    apply_progression(db, workout, payload)
+
     return workout
