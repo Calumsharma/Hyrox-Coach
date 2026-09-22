@@ -5,6 +5,7 @@ from app.models import StationReference, AccessoryMovement, ExerciseReference
 from app.seed_data.stations import STATIONS
 from app.seed_data.accessory_movements import ACCESSORY_MOVEMENTS
 from app.seed_data.exercises import EXERCISES
+from app.seed_data import rule_sets
 
 
 def run():
@@ -38,6 +39,8 @@ def run():
         print(f"Seeded {len(STATIONS)} stations, {len(ACCESSORY_MOVEMENTS)} accessory movements, {len(EXERCISES)} exercises.")
     finally:
         db.close()
+
+    rule_sets.run()
 
 
 if __name__ == "__main__":

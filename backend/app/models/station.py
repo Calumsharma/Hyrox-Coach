@@ -1,4 +1,6 @@
-from sqlalchemy import Float, String, JSON
+from typing import Optional
+
+from sqlalchemy import Float, ForeignKey, String, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -23,6 +25,11 @@ class StationReference(Base):
     division_loads: Mapped[dict] = mapped_column(JSON, default=dict)
 
     primary_demand: Mapped[str] = mapped_column(String)  # e.g. "grip/carry", "posterior chain", "leg strength"
+
+    # Which RaceRuleSet this row's order/loads/demand are drawn from. Nullable only so an
+    # in-memory/pre-migration row can exist momentarily during the Milestone 1A backfill;
+    # the migration's verification step asserts every persisted row ends up non-null.
+    rule_set_version: Mapped[Optional[str]] = mapped_column(String, ForeignKey("race_rule_sets.id"), nullable=True)
 
 
 class AccessoryMovement(Base):

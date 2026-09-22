@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import athletes, auth, exercises, recovery, stations, training, workouts
-from app.db import Base, engine
+from app.db_bootstrap import ensure_schema_current
 from app.seed_data import seed
 
 app = FastAPI(title="S9 API")
@@ -25,7 +25,7 @@ app.include_router(recovery.router)
 
 @app.on_event("startup")
 def on_startup():
-    Base.metadata.create_all(bind=engine)
+    ensure_schema_current()
     seed.run()
 
 
