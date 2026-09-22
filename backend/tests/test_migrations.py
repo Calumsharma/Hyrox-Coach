@@ -1,7 +1,10 @@
 """Milestone 1A's load-bearing tests: the two-path Alembic bootstrap must never execute
 0001_baseline's table-creation upgrade() against an existing populated database, must fail
-safely on unexpected drift, and 0002_v5_foundations must be a genuinely reversible, additive-only
-step. See the Program Engine v5 plan, Milestone 1A, "Tests required"."""
+safely on unexpected drift (across every aspect of the schema Inspector exposes, not just
+columns), and 0002_v5_foundations/0003_1a_hardening must be genuinely reversible, additive-only
+steps. See the Program Engine v5 plan, Milestone 1A, "Tests required", and the Milestone 1A
+hardening pass that strengthened drift detection after an independent audit found the original
+column-only comparison let a missing index through undetected."""
 
 from pathlib import Path
 
@@ -23,15 +26,6 @@ def _alembic_config(db_url: str) -> Config:
     return cfg
 
 
-def _schema_snapshot(engine) -> dict:
-    insp = inspect(engine)
-    return {
-        table: sorted((col["name"], str(col["type"])) for col in insp.get_columns(table))
-        for table in insp.get_table_names()
-        if table != "alembic_version"
-    }
-
-
 # --- Path 1: empty database -> upgrade to head ---
 
 def test_empty_database_upgrade_to_head_matches_current_models(tmp_path):
@@ -40,12 +34,12 @@ def test_empty_database_upgrade_to_head_matches_current_models(tmp_path):
     command.upgrade(_alembic_config(db_url), "head")
 
     engine = create_engine(db_url)
-    actual = _schema_snapshot(engine)
+    actual = db_bootstrap._schema_snapshot(engine)
     engine.dispose()
 
     reference_engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(bind=reference_engine)
-    expected = _schema_snapshot(reference_engine)
+    expected = db_bootstrap._schema_snapshot(reference_engine)
     reference_engine.dispose()
 
     assert actual == expected
@@ -74,7 +68,7 @@ def _build_legacy_database(db_path: Path) -> str:
     return db_url
 
 
-def _seed_representative_data(db_url: str) -> dict:
+def _seed_representative_data(db_url: str) -> None:
     engine = create_engine(db_url)
     with engine.begin() as conn:
         conn.execute(text(
@@ -96,12 +90,17 @@ def _seed_representative_data(db_url: str) -> dict:
             "'{\"rpe\": 7}', '2026-09-01T08:00:00')"
         ))
     engine.dispose()
-    return {
-        "athletes": [("athlete-1", "test@example.com")],
-        "training_blocks": [("block-1", "athlete-1")],
-        "training_weeks": [("week-1", "block-1", 1)],
-        "workouts": [("workout-1", "week-1", '{"rpe": 7}', "2026-09-01T08:00:00")],
-    }
+
+
+def _assert_representative_data_unchanged(db_url: str) -> None:
+    engine = create_engine(db_url)
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT id, email FROM athletes")).fetchall() == [("athlete-1", "test@example.com")]
+        assert conn.execute(text("SELECT id, athlete_id FROM training_blocks")).fetchall() == [("block-1", "athlete-1")]
+        assert conn.execute(text("SELECT id, block_id, week_number FROM training_weeks")).fetchall() == [("week-1", "block-1", 1)]
+        workout_row = conn.execute(text("SELECT id, week_id, logged_result, completed_at FROM workouts")).fetchall()
+        assert workout_row == [("workout-1", "week-1", '{"rpe": 7}', "2026-09-01T08:00:00")]
+    engine.dispose()
 
 
 def test_legacy_database_stamp_and_upgrade_preserves_all_rows(tmp_path, monkeypatch):
@@ -114,29 +113,30 @@ def test_legacy_database_stamp_and_upgrade_preserves_all_rows(tmp_path, monkeypa
 
     db_bootstrap.ensure_schema_current()
 
+    _assert_representative_data_unchanged(db_url)
+
     engine = create_engine(db_url)
     with engine.connect() as conn:
-        assert conn.execute(text("SELECT id, email FROM athletes")).fetchall() == [("athlete-1", "test@example.com")]
-        assert conn.execute(text("SELECT id, athlete_id FROM training_blocks")).fetchall() == [("block-1", "athlete-1")]
-        assert conn.execute(text("SELECT id, block_id, week_number FROM training_weeks")).fetchall() == [("week-1", "block-1", 1)]
-        workout_row = conn.execute(text("SELECT id, week_id, logged_result, completed_at FROM workouts")).fetchall()
-        assert workout_row == [("workout-1", "week-1", '{"rpe": 7}', "2026-09-01T08:00:00")]
-
         # Ruleset data migration ran too, since it's part of 0002_v5_foundations.
         rule_sets = conn.execute(text("SELECT id FROM race_rule_sets")).fetchall()
         assert rule_sets == [("hyrox_singles_2026_27",)]
+
+        # Confirms the full chain (0001 stamped, 0002 AND 0003 executed) actually ran, not just
+        # 0002 — 0003_1a_hardening's constraints must be present on a fresh legacy upgrade too.
+        version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+        assert version == "0003_1a_hardening"
+        unique_constraints = inspect(engine).get_unique_constraints("scheduling_constraints")
+        assert {"athlete_id", "day_of_week"} == set(unique_constraints[0]["column_names"])
     engine.dispose()
 
 
-def test_legacy_database_with_drift_fails_safely(tmp_path, monkeypatch):
+def _run_drift_test(tmp_path, monkeypatch, mutate) -> None:
+    """Shared body for every drift test: build a legacy DB with representative data, apply
+    `mutate` to damage it, run the real bootstrap, and assert it refuses safely."""
     db_path = tmp_path / "drifted.db"
     db_url = _build_legacy_database(db_path)
-
-    engine = create_engine(db_url)
-    with engine.begin() as conn:
-        # Simulate real-world drift: a column 0001_baseline expects is missing.
-        conn.execute(text("ALTER TABLE athletes DROP COLUMN height_cm"))
-    engine.dispose()
+    _seed_representative_data(db_url)
+    mutate(db_url)
 
     monkeypatch.setattr(db_bootstrap.settings, "database_url", db_url)
     monkeypatch.setattr(db_bootstrap, "_ALEMBIC_INI", ALEMBIC_INI)
@@ -144,33 +144,70 @@ def test_legacy_database_with_drift_fails_safely(tmp_path, monkeypatch):
     with pytest.raises(db_bootstrap.SchemaDriftError):
         db_bootstrap.ensure_schema_current()
 
-    # Refused before any schema change — no alembic_version table, no new tables created.
     engine = create_engine(db_url)
     tables = set(inspect(engine).get_table_names())
     engine.dispose()
     assert "alembic_version" not in tables
-    assert "race_rule_sets" not in tables
+    assert not ({"race_rule_sets", "programme_decisions", "athlete_equipment_profiles", "scheduling_constraints"} & tables)
+    _assert_representative_data_unchanged(db_url)
 
 
-# --- Downgrade/re-upgrade of 0002 only, on an ephemeral test database ---
+def test_legacy_database_missing_column_fails_safely(tmp_path, monkeypatch):
+    def mutate(db_url):
+        engine = create_engine(db_url)
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE athletes DROP COLUMN height_cm"))
+        engine.dispose()
+
+    _run_drift_test(tmp_path, monkeypatch, mutate)
+
+
+def test_legacy_database_missing_index_fails_safely(tmp_path, monkeypatch):
+    """Independently reproduced audit finding: the original drift check compared only
+    (column_name, column_type) and did not notice a dropped index at all — it incorrectly
+    stamped and upgraded a database missing ix_training_blocks_athlete_id. The strengthened
+    `_schema_snapshot` compares indexes explicitly, so this must now be refused."""
+    def mutate(db_url):
+        engine = create_engine(db_url)
+        with engine.begin() as conn:
+            conn.execute(text("DROP INDEX ix_training_blocks_athlete_id"))
+        engine.dispose()
+
+    _run_drift_test(tmp_path, monkeypatch, mutate)
+
+
+def test_legacy_database_lost_unique_constraint_fails_safely(tmp_path, monkeypatch):
+    """A changed column property / missing constraint: athletes.email is expected to be
+    uniquely indexed. Recreating it as a plain (non-unique) index must be caught."""
+    def mutate(db_url):
+        engine = create_engine(db_url)
+        with engine.begin() as conn:
+            conn.execute(text("DROP INDEX ix_athletes_email"))
+            conn.execute(text("CREATE INDEX ix_athletes_email ON athletes (email)"))
+        engine.dispose()
+
+    _run_drift_test(tmp_path, monkeypatch, mutate)
+
+
+# --- Downgrade/re-upgrade of 0003 only, on an ephemeral test database ---
 # `downgrade base` (dropping the pre-v5 schema entirely) is exercised here too, but ONLY against
 # this kind of fully disposable database — never treated as a real-data rollback strategy.
 
-def test_downgrade_and_reupgrade_0002_is_idempotent(tmp_path):
+def test_downgrade_and_reupgrade_0003_is_idempotent(tmp_path):
     db_path = tmp_path / "roundtrip.db"
     db_url = f"sqlite:///{db_path}"
     cfg = _alembic_config(db_url)
 
-    command.upgrade(cfg, "0001_baseline")
     command.upgrade(cfg, "0002_v5_foundations")
+    command.upgrade(cfg, "0003_1a_hardening")
     engine = create_engine(db_url)
-    schema_first = _schema_snapshot(engine)
+    schema_first = db_bootstrap._schema_snapshot(engine)
     engine.dispose()
 
-    command.downgrade(cfg, "0001_baseline")
-    command.upgrade(cfg, "0002_v5_foundations")
+    command.downgrade(cfg, "0002_v5_foundations")
+    command.upgrade(cfg, "0003_1a_hardening")
     engine = create_engine(db_url)
-    schema_second = _schema_snapshot(engine)
+    schema_second = db_bootstrap._schema_snapshot(engine)
     engine.dispose()
 
     assert schema_first == schema_second
@@ -190,3 +227,39 @@ def test_downgrade_base_only_on_disposable_database(tmp_path):
     tables = set(inspect(engine).get_table_names()) - {"alembic_version"}
     engine.dispose()
     assert tables == set()
+
+
+# --- 0003_1a_hardening's own fail-safe pre-check: refuses to add constraints over violating data ---
+
+def test_0003_refuses_to_add_unique_constraint_over_existing_duplicates(tmp_path):
+    db_path = tmp_path / "dupe.db"
+    db_url = f"sqlite:///{db_path}"
+    cfg = _alembic_config(db_url)
+    command.upgrade(cfg, "0002_v5_foundations")
+
+    engine = create_engine(db_url)
+    with engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO athletes (id, email, onboarding_completed, self_reported_weak_stations, created_at) "
+            "VALUES ('a1', 'dupe@example.com', 0, '[]', '2026-09-01T00:00:00')"
+        ))
+        conn.execute(text(
+            "INSERT INTO scheduling_constraints (id, athlete_id, day_of_week, available, notes) "
+            "VALUES ('s1', 'a1', 1, 1, '')"
+        ))
+        conn.execute(text(
+            "INSERT INTO scheduling_constraints (id, athlete_id, day_of_week, available, notes) "
+            "VALUES ('s2', 'a1', 1, 1, 'dup')"
+        ))
+    engine.dispose()
+
+    with pytest.raises(RuntimeError, match="duplicate"):
+        command.upgrade(cfg, "0003_1a_hardening")
+
+    engine = create_engine(db_url)
+    with engine.connect() as conn:
+        version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+        assert version == "0002_v5_foundations"
+        rows = conn.execute(text("SELECT id FROM scheduling_constraints ORDER BY id")).fetchall()
+        assert rows == [("s1",), ("s2",)]
+    engine.dispose()

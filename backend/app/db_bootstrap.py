@@ -53,16 +53,102 @@ def _table_names(engine: Engine) -> set[str]:
     return set(inspect(engine).get_table_names())
 
 
-def _schema_snapshot(engine: Engine) -> dict[str, list[tuple[str, str]]]:
+# --- Canonical, deterministic per-table schema signature ---
+#
+# The original snapshot compared only (column_name, column_type) per table. An independent
+# audit found this insufficient to back this module's own claim of "schema equivalence" — it
+# would, for example, silently accept a database missing an expected index. This version
+# compares columns (name/type/nullable/default), primary key, indexes, unique constraints,
+# foreign keys, and check constraints — everything SQLAlchemy's Inspector exposes that a
+# migration can meaningfully change. Every part is normalized (sorted, whitespace/case-folded)
+# so two structurally-equivalent SQLite schemas compare equal regardless of reflection ordering
+# or minor dialect text formatting.
+
+def _normalize_type(col_type) -> str:
+    return "".join(str(col_type).split()).upper()
+
+
+def _normalize_default(default) -> str | None:
+    if default is None:
+        return None
+    return "".join(str(default).split()).upper()
+
+
+def _column_signature(col: dict) -> tuple:
+    return (
+        col["name"],
+        _normalize_type(col["type"]),
+        bool(col["nullable"]),
+        _normalize_default(col.get("default")),
+    )
+
+
+def _index_signature(idx: dict) -> tuple:
+    return (tuple(sorted(idx["column_names"])), bool(idx["unique"]))
+
+
+def _unique_constraint_signature(uc: dict) -> tuple:
+    return tuple(sorted(uc["column_names"]))
+
+
+def _foreign_key_signature(fk: dict) -> tuple:
+    return (
+        tuple(sorted(fk["constrained_columns"])),
+        fk["referred_table"],
+        tuple(sorted(fk["referred_columns"])),
+    )
+
+
+def _check_constraint_signature(ck: dict) -> str:
+    # SQLite reflects check constraints by parsing the CREATE TABLE text back out, so trivial
+    # whitespace/quoting differences are possible between two structurally-identical
+    # constraints. Case- and whitespace-normalizing catches that without masking a real
+    # difference in the actual condition.
+    return "".join((ck.get("sqltext") or "").split()).lower()
+
+
+def _table_signature(insp, table: str) -> dict:
+    pk = insp.get_pk_constraint(table) or {}
+    return {
+        "columns": sorted(_column_signature(c) for c in insp.get_columns(table)),
+        "primary_key": tuple(sorted(pk.get("constrained_columns") or [])),
+        "indexes": sorted(_index_signature(i) for i in insp.get_indexes(table)),
+        "unique_constraints": sorted(_unique_constraint_signature(u) for u in insp.get_unique_constraints(table)),
+        "foreign_keys": sorted(_foreign_key_signature(f) for f in insp.get_foreign_keys(table)),
+        "check_constraints": sorted(_check_constraint_signature(c) for c in insp.get_check_constraints(table)),
+    }
+
+
+def _schema_snapshot(engine: Engine) -> dict[str, dict]:
     insp = inspect(engine)
     return {
-        table: sorted((col["name"], str(col["type"])) for col in insp.get_columns(table))
+        table: _table_signature(insp, table)
         for table in insp.get_table_names()
         if table != "alembic_version"
     }
 
 
-def _expected_baseline_schema() -> dict[str, list[tuple[str, str]]]:
+def _describe_schema_drift(expected: dict[str, dict], actual: dict[str, dict]) -> str:
+    """Human-readable diff of a schema mismatch, for the SchemaDriftError message."""
+    missing_tables = sorted(set(expected) - set(actual))
+    unexpected_tables = sorted(set(actual) - set(expected))
+    parts = []
+    if missing_tables:
+        parts.append(f"missing_tables={missing_tables}")
+    if unexpected_tables:
+        parts.append(f"unexpected_tables={unexpected_tables}")
+    for table in sorted(set(expected) & set(actual)):
+        if expected[table] == actual[table]:
+            continue
+        table_diffs = []
+        for aspect in ("columns", "primary_key", "indexes", "unique_constraints", "foreign_keys", "check_constraints"):
+            if expected[table][aspect] != actual[table][aspect]:
+                table_diffs.append(f"{aspect}: expected={expected[table][aspect]!r} actual={actual[table][aspect]!r}")
+        parts.append(f"table '{table}' differs — " + "; ".join(table_diffs))
+    return " | ".join(parts)
+
+
+def _expected_baseline_schema() -> dict[str, dict]:
     """The schema 0001_baseline produces, computed by actually running it against a throwaway
     on-disk database — rather than hand-duplicating column definitions here, which would be
     exactly the kind of drift-prone duplication this migration strategy is trying to avoid.
@@ -130,18 +216,10 @@ def ensure_schema_current() -> None:
     expected_schema = _expected_baseline_schema()
 
     if actual_schema != expected_schema:
-        missing_tables = set(expected_schema) - set(actual_schema)
-        unexpected_tables = set(actual_schema) - set(expected_schema)
-        column_mismatches = {
-            table: (expected_schema.get(table), actual_schema.get(table))
-            for table in set(expected_schema) | set(actual_schema)
-            if table in expected_schema and table in actual_schema and expected_schema[table] != actual_schema[table]
-        }
         raise SchemaDriftError(
             "Existing database schema does not match what 0001_baseline expects — refusing to "
-            "proceed. A backup was taken at "
-            f"{backup_path}. missing_tables={sorted(missing_tables)} "
-            f"unexpected_tables={sorted(unexpected_tables)} column_mismatches={column_mismatches}"
+            f"proceed. A backup was taken at {backup_path}. "
+            f"{_describe_schema_drift(expected_schema, actual_schema)}"
         )
 
     command.stamp(cfg, _BASELINE_REVISION)
