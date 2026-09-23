@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, String
+from sqlalchemy import Date, DateTime, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -31,6 +31,12 @@ class RecoveryReading(Base):
     """One day's raw recovery inputs, normalized from whichever wearable provider supplied them."""
 
     __tablename__ = "recovery_readings"
+    __table_args__ = (
+        # Composite target for CapabilityAssessment.recovery_reading_id's composite FK
+        # (Program Engine v5 Milestone 1B) — enforces a cited reading belongs to the same
+        # athlete as the assessment citing it, at the database level.
+        UniqueConstraint("id", "athlete_id"),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     athlete_id: Mapped[str] = mapped_column(String, ForeignKey("athletes.id"), index=True)

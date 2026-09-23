@@ -8,6 +8,20 @@ from app.models.rule_set import RaceRuleSet
 from app.models.programme_decision import ProgrammeDecision
 from app.models.athlete_equipment import AthleteEquipmentProfile
 from app.models.scheduling import SchedulingConstraint
+from app.models.capability import (
+    CapabilityDefinition,
+    CapabilityMetric,
+    CapabilityAssessment,
+    CapabilityScore,
+    CapabilityScoreAssessment,
+    CapabilityBandPolicy,
+    CapabilityBand,
+    CapabilityGap,
+    CapabilityConfidencePolicy,
+    CapabilityConfidenceRule,
+)
+from app.models.benchmark import BenchmarkDefinition, BenchmarkDefinitionMetric, BenchmarkResult
+from app.models.athlete_status import AthleteStatusReport
 
 __all__ = [
     "Athlete",
@@ -27,4 +41,18 @@ __all__ = [
     "ProgrammeDecision",
     "AthleteEquipmentProfile",
     "SchedulingConstraint",
+    "CapabilityDefinition",
+    "CapabilityMetric",
+    "CapabilityAssessment",
+    "CapabilityScore",
+    "CapabilityScoreAssessment",
+    "CapabilityBandPolicy",
+    "CapabilityBand",
+    "CapabilityGap",
+    "CapabilityConfidencePolicy",
+    "CapabilityConfidenceRule",
+    "BenchmarkDefinition",
+    "BenchmarkDefinitionMetric",
+    "BenchmarkResult",
+    "AthleteStatusReport",
 ]

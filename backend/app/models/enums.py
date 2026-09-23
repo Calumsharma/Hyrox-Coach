@@ -102,3 +102,89 @@ class ProgrammeDecisionType(str, enum.Enum):
     MISSED_SESSION_SUBSTITUTED = "missed_session_substituted"
     MISSED_SESSION_DROPPED_REBALANCED = "missed_session_dropped_rebalanced"
     MANUAL_COACH_EDIT = "manual_coach_edit"
+
+
+# --- Program Engine v5 Milestone 1B: capability measurement foundation ---
+# See the Milestone 1B plan (happy-weaving-raven.md) for the full rationale behind each.
+
+class AssessmentType(str, enum.Enum):
+    """Where a CapabilityAssessment's evidence originated. Does not by itself determine
+    whether the assessment is a direct measurement or a derived feature — see
+    CapabilityAssessment.derivation_method."""
+
+    BENCHMARK_RESULT = "benchmark_result"
+    LOGGED_SESSION_DERIVED = "logged_session_derived"
+    SELF_REPORT = "self_report"
+    WEARABLE_DERIVED = "wearable_derived"
+    RACE_RESULT = "race_result"
+
+
+class CapabilityClassification(str, enum.Enum):
+    """CapabilityGap's weak/adequate/strong/unclassified verdict."""
+
+    WEAK = "weak"
+    ADEQUATE = "adequate"
+    STRONG = "strong"
+    UNCLASSIFIED = "unclassified"
+
+
+class CapabilityConfidence(str, enum.Enum):
+    """CapabilityGap's confidence in its classification. NONE means no CapabilityBandPolicy
+    exists yet for this metric — never a guessed value."""
+
+    NONE = "none"
+    LOW = "low"
+    MODERATE = "moderate"
+    HIGH = "high"
+
+
+class BandLabel(str, enum.Enum):
+    """CapabilityBand's own label — never 'unclassified', since a band always represents a
+    real classification; the unclassified state is the absence of an applicable band."""
+
+    WEAK = "weak"
+    ADEQUATE = "adequate"
+    STRONG = "strong"
+
+
+class SourceQualityTier(str, enum.Enum):
+    """The evidence-quality hierarchy a CapabilityConfidenceRule is scoped to — direct
+    task-specific evidence outranks training logs, which outrank indirect proxies, which
+    outrank self-report. Pain/illness safety reporting is a separate mechanism entirely
+    (AthleteStatusReport) and does not appear in this hierarchy."""
+
+    DIRECT_BENCHMARK = "direct_benchmark"
+    RACE_RESULT = "race_result"
+    TRAINING_LOG = "training_log"
+    INDIRECT_PROXY = "indirect_proxy"
+    SELF_REPORT = "self_report"
+
+
+class ConfidenceTier(str, enum.Enum):
+    """What a satisfied CapabilityConfidenceRule produces. No NONE value — a rule only ever
+    grants a positive confidence tier; the absence of any satisfied rule is what produces
+    CapabilityConfidence.NONE on the resulting CapabilityGap."""
+
+    LOW = "low"
+    MODERATE = "moderate"
+    HIGH = "high"
+
+
+class StatusReportSource(str, enum.Enum):
+    """Who/what supplied an AthleteStatusReport. Deliberately closed to athlete-provided input
+    only in Milestone 1B — never inferred, never a route/service default."""
+
+    ATHLETE_SELF_REPORT = "athlete_self_report"
+
+
+class SymptomSeverity(str, enum.Enum):
+    NONE = "none"
+    MILD = "mild"
+    MODERATE = "moderate"
+    SEVERE = "severe"
+
+
+class EffectOnTraining(str, enum.Enum):
+    NONE = "none"
+    REDUCED = "reduced"
+    AVOID = "avoid"

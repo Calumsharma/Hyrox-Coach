@@ -121,12 +121,22 @@ def test_legacy_database_stamp_and_upgrade_preserves_all_rows(tmp_path, monkeypa
         rule_sets = conn.execute(text("SELECT id FROM race_rule_sets")).fetchall()
         assert rule_sets == [("hyrox_singles_2026_27",)]
 
-        # Confirms the full chain (0001 stamped, 0002 AND 0003 executed) actually ran, not just
-        # 0002 — 0003_1a_hardening's constraints must be present on a fresh legacy upgrade too.
+        # Confirms the full chain (0001 stamped, 0002/0003/0004 executed) actually ran, not
+        # just 0002 — every later migration's constraints must be present on a fresh legacy
+        # upgrade too, including 0004's additive unique constraints on these two pre-existing
+        # tables.
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-        assert version == "0003_1a_hardening"
+        assert version == "0004_capability_foundation"
         unique_constraints = inspect(engine).get_unique_constraints("scheduling_constraints")
         assert {"athlete_id", "day_of_week"} == set(unique_constraints[0]["column_names"])
+        assert any(
+            set(uc["column_names"]) == {"id", "athlete_id"}
+            for uc in inspect(engine).get_unique_constraints("recovery_readings")
+        )
+        assert any(
+            set(uc["column_names"]) == {"id", "athlete_id"}
+            for uc in inspect(engine).get_unique_constraints("past_hyrox_results")
+        )
     engine.dispose()
 
 
@@ -227,6 +237,28 @@ def test_downgrade_base_only_on_disposable_database(tmp_path):
     tables = set(inspect(engine).get_table_names()) - {"alembic_version"}
     engine.dispose()
     assert tables == set()
+
+
+# --- Downgrade/re-upgrade of 0004 only, on an ephemeral test database ---
+
+def test_downgrade_and_reupgrade_0004_is_idempotent(tmp_path):
+    db_path = tmp_path / "roundtrip_0004.db"
+    db_url = f"sqlite:///{db_path}"
+    cfg = _alembic_config(db_url)
+
+    command.upgrade(cfg, "0003_1a_hardening")
+    command.upgrade(cfg, "0004_capability_foundation")
+    engine = create_engine(db_url)
+    schema_first = db_bootstrap._schema_snapshot(engine)
+    engine.dispose()
+
+    command.downgrade(cfg, "0003_1a_hardening")
+    command.upgrade(cfg, "0004_capability_foundation")
+    engine = create_engine(db_url)
+    schema_second = db_bootstrap._schema_snapshot(engine)
+    engine.dispose()
+
+    assert schema_first == schema_second
 
 
 # --- 0003_1a_hardening's own fail-safe pre-check: refuses to add constraints over violating data ---
