@@ -111,8 +111,22 @@ class CapabilityAssessment(Base):
             ondelete="RESTRICT",
         ),
         UniqueConstraint("id", "athlete_id", "metric_id"),
-        CheckConstraint("assessment_type != 'self_report' OR derivation_method IS NULL"),
-        CheckConstraint("assessment_type != 'logged_session_derived' OR derivation_method IS NOT NULL"),
+        # Named explicitly (Milestone 2, migration 0005) — Alembic's SQLite batch-mode table
+        # recreation was found to silently DROP unnamed CHECK constraints on this table during
+        # the migration that adds `ingested_at`/`source_revision`. Naming them is what makes
+        # them survive that recreation; the migration also re-asserts them by these exact names.
+        CheckConstraint(
+            "assessment_type != 'self_report' OR derivation_method IS NULL",
+            name="ck_capability_assessment_self_report_no_derivation_method",
+        ),
+        CheckConstraint(
+            "assessment_type != 'logged_session_derived' OR derivation_method IS NOT NULL",
+            name="ck_capability_assessment_logged_session_has_derivation_method",
+        ),
+        CheckConstraint(
+            "assessment_type != 'wearable_derived' OR source_revision IS NOT NULL",
+            name="ck_capability_assessment_wearable_derived_has_source_revision",
+        ),
         CheckConstraint(
             "(assessment_type = 'benchmark_result' AND benchmark_result_id IS NOT NULL "
             "AND workout_id IS NULL AND recovery_reading_id IS NULL AND past_hyrox_result_id IS NULL) "
@@ -152,6 +166,20 @@ class CapabilityAssessment(Base):
 
     recorded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     evidence_class: Mapped[EvidenceClass] = mapped_column(String, default=EvidenceClass.COACH_DERIVED)
+
+    # Program Engine v5 Milestone 2 (migration 0005). `recorded_at` above means the time the
+    # underlying evidence was MEASURED; `ingested_at` is when this assessment row was actually
+    # created — a same-day revision (e.g. two wearable syncs on one calendar day) can otherwise
+    # tie on `recorded_at`, and `ingested_at` is the tiebreak (see capability_scoring.py).
+    # `source_revision` is an opaque revision marker: NULL for non-revision-bearing assessment
+    # types (benchmark_result/race_result/self_report, where the cited source row is itself
+    # immutable so no revision concept applies); for wearable_derived, always a real string —
+    # either the cited RecoveryReading's own `vo2_max_updated_at`, or the literal sentinel
+    # "unknown_historical" for a reading that predates migration 0005. This is what lets
+    # idempotent ingestion tell apart a genuine new measurement from an unchanged resync, even
+    # when the new value happens to numerically match an old one (e.g. 50 -> 51 -> 50).
+    ingested_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    source_revision: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
 
 class CapabilityScore(Base):

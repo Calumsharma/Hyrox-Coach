@@ -69,6 +69,7 @@ def test_capability_assessment_create_and_read(db_session):
         assessment_type="self_report",
         recorded_at=datetime(2026, 9, 1),
         evidence_class="coach_derived",
+        ingested_at=datetime(2026, 9, 1),  # Program Engine v5 Milestone 2 (migration 0005): NOT NULL
     )
     db_session.add(assessment)
     db_session.commit()
@@ -106,6 +107,7 @@ def test_capability_score_assessment_lineage_create_and_read(db_session):
     assessment = CapabilityAssessment(
         athlete_id=athlete.id, metric_id=metric.id, raw_value=310.5,
         assessment_type="self_report", recorded_at=datetime(2026, 9, 1), evidence_class="coach_derived",
+        ingested_at=datetime(2026, 9, 1),  # Program Engine v5 Milestone 2 (migration 0005): NOT NULL
     )
     score = CapabilityScore(
         athlete_id=athlete.id, metric_id=metric.id, value=310.5,

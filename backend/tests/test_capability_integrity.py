@@ -59,6 +59,8 @@ def _assessment(db_session, athlete, metric, **overrides):
     defaults = dict(
         athlete_id=athlete.id, metric_id=metric.id, raw_value=300.0,
         assessment_type="self_report", recorded_at=datetime(2026, 9, 1), evidence_class="coach_derived",
+        # Program Engine v5 Milestone 2 (migration 0005) added ingested_at as NOT NULL.
+        ingested_at=datetime(2026, 9, 1),
     )
     defaults.update(overrides)
     assessment = CapabilityAssessment(**defaults)
@@ -160,7 +162,7 @@ def test_assessment_source_ownership_same_athlete_is_accepted(db_session):
     db_session.add(CapabilityAssessment(
         athlete_id=athlete.id, metric_id=metric.id, raw_value=12.0, derivation_method="post_station_split_penalty_v1",
         assessment_type="race_result", past_hyrox_result_id=result.id,
-        recorded_at=datetime(2026, 9, 1), evidence_class="coach_derived",
+        recorded_at=datetime(2026, 9, 1), evidence_class="coach_derived", ingested_at=datetime(2026, 9, 1),
     ))
     db_session.commit()
 
@@ -374,7 +376,7 @@ def test_valid_self_report_assessment_is_accepted(db_session):
     db_session.add(CapabilityAssessment(
         athlete_id=athlete.id, metric_id=metric.id, raw_value=300.0,
         assessment_type="self_report",
-        recorded_at=datetime(2026, 9, 1), evidence_class="coach_derived",
+        recorded_at=datetime(2026, 9, 1), evidence_class="coach_derived", ingested_at=datetime(2026, 9, 1),
     ))
     db_session.commit()
 
@@ -930,12 +932,42 @@ def test_session_usable_after_rejected_capability_update(db_session):
 # ============================================================
 
 def test_no_production_code_reads_capability_tables_outside_their_own_modules():
-    result = subprocess.run(
-        ["grep", "-rl", "-e", "Capability", "-e", "BenchmarkDefinition", "-e", "BenchmarkResult", "app/services/", "app/api/"],
-        cwd=REPO_ROOT, capture_output=True, text=True,
-    )
-    referencing_files = {line for line in result.stdout.splitlines() if line}
-    assert referencing_files == set(), f"Unexpected capability-table reference(s) in services/routes: {referencing_files}"
+    """Milestone 1B's original assertion was "nothing reads these tables yet" — Milestone 2's
+    entire purpose is to activate exactly the services/routes named in Milestone 2 v2.2 (§J) as
+    real, approved readers. This test now asserts the narrower, still-load-bearing guarantee:
+    NOTHING outside that explicit, approved set references capability/benchmark tables — in
+    particular, `program_engine.py`/`movement_library.py` still don't (see the next test).
+
+    Implemented as a plain Python source scan rather than `grep -rl`, matching the same fix
+    already applied to `test_athlete_status_report.py`'s equivalent test: `grep -rl` over a
+    directory in a normal (non-`PYTHONDONTWRITEBYTECODE`) environment can match generated
+    `__pycache__/*.pyc` bytecode files, since a class-name string can still appear in their
+    binary content — a false positive that depends on platform/grep implementation and on
+    whether the suite has already been run once. This scan only ever reads `*.py` source files
+    under `app/services/` and `app/api/`, explicitly skipping `__pycache__`, so compiled
+    bytecode is never a factor regardless of platform, prior runs, or bytecode-caching settings.
+    """
+    search_terms = ("Capability", "BenchmarkDefinition", "BenchmarkResult")
+    referencing_files = set()
+    for search_dir in ("app/services", "app/api"):
+        for py_file in (REPO_ROOT / search_dir).rglob("*.py"):
+            if "__pycache__" in py_file.parts:
+                continue
+            text = py_file.read_text(encoding="utf-8")
+            if any(term in text for term in search_terms):
+                referencing_files.add(py_file.relative_to(REPO_ROOT).as_posix())
+
+    allowed = {
+        "app/api/capabilities.py",
+        "app/services/capability_classification.py",
+        "app/services/capability_db_compat.py",
+        "app/services/capability_gap_service.py",
+        "app/services/capability_identity.py",
+        "app/services/capability_ingestion.py",
+        "app/services/capability_scoring.py",
+        "app/services/capability_status_service.py",
+    }
+    assert referencing_files <= allowed, f"Unexpected capability-table reference(s) in services/routes: {referencing_files - allowed}"
 
 
 def test_program_engine_and_movement_library_do_not_reference_capability_tables():

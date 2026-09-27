@@ -121,12 +121,12 @@ def test_legacy_database_stamp_and_upgrade_preserves_all_rows(tmp_path, monkeypa
         rule_sets = conn.execute(text("SELECT id FROM race_rule_sets")).fetchall()
         assert rule_sets == [("hyrox_singles_2026_27",)]
 
-        # Confirms the full chain (0001 stamped, 0002/0003/0004 executed) actually ran, not
+        # Confirms the full chain (0001 stamped, 0002/0003/0004/0005 executed) actually ran, not
         # just 0002 — every later migration's constraints must be present on a fresh legacy
         # upgrade too, including 0004's additive unique constraints on these two pre-existing
-        # tables.
+        # tables and 0005's additive VO2max provenance columns.
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-        assert version == "0004_capability_foundation"
+        assert version == "0005_capability_provenance"
         unique_constraints = inspect(engine).get_unique_constraints("scheduling_constraints")
         assert {"athlete_id", "day_of_week"} == set(unique_constraints[0]["column_names"])
         assert any(
@@ -295,3 +295,240 @@ def test_0003_refuses_to_add_unique_constraint_over_existing_duplicates(tmp_path
         rows = conn.execute(text("SELECT id FROM scheduling_constraints ORDER BY id")).fetchall()
         assert rows == [("s1",), ("s2",)]
     engine.dispose()
+
+
+# --- 0005_capability_provenance: eight-step safe sequence (Milestone 2 v2.2 plan, §J) ---
+
+def _insert_representative_capability_assessment(
+    db_url: str, assessment_id: str, assessment_type: str, recovery_reading_id: str = None
+) -> None:
+    """Inserts one representative `capability_assessments` row directly via raw SQL, against a
+    database at exactly `0004_capability_foundation` — before `ingested_at`/`source_revision`
+    exist, so this insert only ever uses 0004-era columns — simulating the hypothetical case the
+    migration must handle correctly even though no real database has any row in this table today
+    (Milestone 2 is what first writes to it). `recovery_reading_id` is required (and a real
+    `recovery_readings` row is created for it) when `assessment_type="wearable_derived"`, since
+    0004's own source-consistency CHECK requires it — `self_report` needs no source row at all.
+    """
+    engine = create_engine(db_url)
+    with engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO athletes (id, email, onboarding_completed, self_reported_weak_stations, created_at) "
+            "VALUES ('mig-athlete-1', 'mig@example.com', 0, '[]', '2026-09-01T00:00:00')"
+        ))
+        conn.execute(text("INSERT INTO capability_definitions (id, name, description, measurement_hint) "
+                           "VALUES ('aerobic_capacity', 'Aerobic Capacity', '', '')"))
+        conn.execute(text(
+            "INSERT INTO capability_metrics (id, capability_id, station, unit, higher_is_better, "
+            "evidence_class, description) VALUES ('vo2max_wearable_ml_kg_min', 'aerobic_capacity', "
+            "NULL, 'ml_kg_min', 1, 'research_supported', '')"
+        ))
+        if assessment_type == "wearable_derived":
+            conn.execute(text(
+                f"INSERT INTO recovery_readings (id, athlete_id, reading_date, source, vo2_max, created_at) "
+                f"VALUES ('{recovery_reading_id}', 'mig-athlete-1', '2026-09-01', 'apple_health', 50.0, '2026-09-01T00:00:00')"
+            ))
+            conn.execute(text(
+                f"INSERT INTO capability_assessments (id, athlete_id, metric_id, raw_value, "
+                f"derivation_method, assessment_type, recovery_reading_id, recorded_at, evidence_class) "
+                f"VALUES ('{assessment_id}', 'mig-athlete-1', 'vo2max_wearable_ml_kg_min', 50.0, NULL, "
+                f"'{assessment_type}', '{recovery_reading_id}', '2026-09-01T08:00:00', 'research_supported')"
+            ))
+        else:
+            conn.execute(text(
+                f"INSERT INTO capability_assessments (id, athlete_id, metric_id, raw_value, "
+                f"derivation_method, assessment_type, recorded_at, evidence_class) "
+                f"VALUES ('{assessment_id}', 'mig-athlete-1', 'vo2max_wearable_ml_kg_min', 50.0, NULL, "
+                f"'{assessment_type}', '2026-09-01T08:00:00', 'research_supported')"
+            ))
+    engine.dispose()
+
+
+def test_0005_backfills_ingested_at_from_recorded_at_for_representative_row(tmp_path):
+    db_path = tmp_path / "mig0005_ingested_at.db"
+    db_url = f"sqlite:///{db_path}"
+    cfg = _alembic_config(db_url)
+    command.upgrade(cfg, "0004_capability_foundation")
+    _insert_representative_capability_assessment(db_url, "a1", "self_report")
+
+    command.upgrade(cfg, "0005_capability_provenance")
+
+    engine = create_engine(db_url)
+    with engine.connect() as conn:
+        row = conn.execute(text(
+            "SELECT recorded_at, ingested_at FROM capability_assessments WHERE id = 'a1'"
+        )).fetchone()
+    engine.dispose()
+    assert row.ingested_at == row.recorded_at == "2026-09-01T08:00:00"
+
+
+def test_0005_defensively_backfills_wearable_derived_null_source_revision(tmp_path):
+    """The specific defensive backfill your final review round required: a pre-existing
+    wearable_derived row with a null source_revision must become 'unknown_historical' — never a
+    guessed provider, value, or timestamp — BEFORE the new CHECK is added, so the migration can
+    never fail on an unexpected historical row."""
+    db_path = tmp_path / "mig0005_source_revision.db"
+    db_url = f"sqlite:///{db_path}"
+    cfg = _alembic_config(db_url)
+    command.upgrade(cfg, "0004_capability_foundation")
+    _insert_representative_capability_assessment(db_url, "a2", "wearable_derived", recovery_reading_id="rr-a2")
+
+    command.upgrade(cfg, "0005_capability_provenance")
+
+    engine = create_engine(db_url)
+    with engine.connect() as conn:
+        source_revision = conn.execute(text(
+            "SELECT source_revision FROM capability_assessments WHERE id = 'a2'"
+        )).scalar()
+        # The new CHECK must actually be enforced: a fresh insert with a null source_revision on
+        # a wearable_derived row is rejected going forward (only the defensive backfill above
+        # is exempt, and only because it ran before the CHECK existed).
+        with pytest.raises(Exception):
+            with engine.begin() as conn2:
+                conn2.execute(text(
+                    "INSERT INTO capability_assessments (id, athlete_id, metric_id, raw_value, "
+                    "derivation_method, assessment_type, recorded_at, evidence_class, ingested_at, "
+                    "source_revision) VALUES ('a3', 'mig-athlete-1', 'vo2max_wearable_ml_kg_min', "
+                    "51.0, NULL, 'wearable_derived', '2026-09-02T08:00:00', 'research_supported', "
+                    "'2026-09-02T08:00:00', NULL)"
+                ))
+    engine.dispose()
+    assert source_revision == "unknown_historical"
+
+
+def test_0005_non_wearable_derived_source_revision_left_null(tmp_path):
+    """The defensive backfill in step 6 is scoped to wearable_derived rows only — a
+    benchmark_result row's null source_revision (the normal, expected case, since
+    BenchmarkResult is immutable and carries no revision concept) is left alone."""
+    db_path = tmp_path / "mig0005_non_wearable.db"
+    db_url = f"sqlite:///{db_path}"
+    cfg = _alembic_config(db_url)
+    command.upgrade(cfg, "0004_capability_foundation")
+    _insert_representative_capability_assessment(db_url, "a4", "self_report")
+
+    command.upgrade(cfg, "0005_capability_provenance")
+
+    engine = create_engine(db_url)
+    with engine.connect() as conn:
+        source_revision = conn.execute(text(
+            "SELECT source_revision FROM capability_assessments WHERE id = 'a4'"
+        )).scalar()
+    engine.dispose()
+    assert source_revision is None
+
+
+def test_downgrade_and_reupgrade_0005_is_idempotent(tmp_path):
+    db_path = tmp_path / "roundtrip_0005.db"
+    db_url = f"sqlite:///{db_path}"
+    cfg = _alembic_config(db_url)
+
+    command.upgrade(cfg, "0004_capability_foundation")
+    command.upgrade(cfg, "0005_capability_provenance")
+    engine = create_engine(db_url)
+    schema_first = db_bootstrap._schema_snapshot(engine)
+    engine.dispose()
+
+    command.downgrade(cfg, "0004_capability_foundation")
+    command.upgrade(cfg, "0005_capability_provenance")
+    engine = create_engine(db_url)
+    schema_second = db_bootstrap._schema_snapshot(engine)
+    engine.dispose()
+
+    assert schema_first == schema_second
+
+
+def test_0005_pre_existing_recovery_reading_rows_get_null_vo2max_provenance(tmp_path):
+    """Point 2's explicit requirement: backfill unknown historical provenance as unknown/null,
+    never guess it. A representative pre-existing RecoveryReading (with a real vo2_max value,
+    from before this migration existed) must have all three new provenance columns left NULL."""
+    db_path = tmp_path / "mig0005_recovery_reading.db"
+    db_url = f"sqlite:///{db_path}"
+    cfg = _alembic_config(db_url)
+    command.upgrade(cfg, "0004_capability_foundation")
+
+    engine = create_engine(db_url)
+    with engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO athletes (id, email, onboarding_completed, self_reported_weak_stations, created_at) "
+            "VALUES ('rr-athlete-1', 'rr@example.com', 0, '[]', '2026-09-01T00:00:00')"
+        ))
+        conn.execute(text(
+            "INSERT INTO recovery_readings (id, athlete_id, reading_date, source, vo2_max, created_at) "
+            "VALUES ('rr1', 'rr-athlete-1', '2026-08-01', 'apple_health', 48.5, '2026-08-01T00:00:00')"
+        ))
+    engine.dispose()
+
+    command.upgrade(cfg, "0005_capability_provenance")
+
+    engine = create_engine(db_url)
+    with engine.connect() as conn:
+        row = conn.execute(text(
+            "SELECT vo2_max, vo2_max_source, vo2_max_recorded_at, vo2_max_updated_at "
+            "FROM recovery_readings WHERE id = 'rr1'"
+        )).fetchone()
+    engine.dispose()
+    assert row.vo2_max == 48.5
+    assert row.vo2_max_source is None
+    assert row.vo2_max_recorded_at is None
+    assert row.vo2_max_updated_at is None
+
+
+def test_downgrade_to_0004_preserves_derivation_method_check_enforcement(tmp_path):
+    """Independent review, point 5: downgrading to 0004 must not remove 0004's own
+    derivation-method integrity rules — they're named now (a side effect of the batch-recreation
+    bug fix, see the migration's module docstring), but the enforcement itself must survive the
+    downgrade. Verified directly: both invalid combinations are still rejected while the
+    database is at the downgraded-to-0004 state."""
+    db_path = tmp_path / "downgrade_checks.db"
+    db_url = f"sqlite:///{db_path}"
+    cfg = _alembic_config(db_url)
+    command.upgrade(cfg, "0005_capability_provenance")
+    command.downgrade(cfg, "0004_capability_foundation")
+
+    engine = create_engine(db_url)
+    with engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO athletes (id, email, onboarding_completed, self_reported_weak_stations, created_at) "
+            "VALUES ('dg-athlete-1', 'dg@example.com', 0, '[]', '2026-09-01T00:00:00')"
+        ))
+        conn.execute(text("INSERT INTO capability_definitions (id, name, description, measurement_hint) "
+                           "VALUES ('aerobic_capacity', 'Aerobic Capacity', '', '')"))
+        conn.execute(text(
+            "INSERT INTO capability_metrics (id, capability_id, station, unit, higher_is_better, "
+            "evidence_class, description) VALUES ('vo2max_wearable_ml_kg_min', 'aerobic_capacity', "
+            "NULL, 'ml_kg_min', 1, 'research_supported', '')"
+        ))
+    engine.dispose()
+
+    # self_report + non-null derivation_method must still be rejected.
+    engine = create_engine(db_url)
+    with pytest.raises(Exception):
+        with engine.begin() as conn:
+            conn.execute(text(
+                "INSERT INTO capability_assessments (id, athlete_id, metric_id, raw_value, "
+                "derivation_method, assessment_type, recorded_at, evidence_class) VALUES "
+                "('bad-self-report', 'dg-athlete-1', 'vo2max_wearable_ml_kg_min', 50.0, 'some_method', "
+                "'self_report', '2026-09-01T08:00:00', 'research_supported')"
+            ))
+    engine.dispose()
+
+    # logged_session_derived + null derivation_method must still be rejected. PRAGMA foreign_keys
+    # is off by default on this ad-hoc engine, so a non-existent workout_id doesn't mask the
+    # result with an FK error — only the derivation-method CHECK is exercised here.
+    engine = create_engine(db_url)
+    with pytest.raises(Exception):
+        with engine.begin() as conn:
+            conn.execute(text(
+                "INSERT INTO capability_assessments (id, athlete_id, metric_id, raw_value, "
+                "derivation_method, assessment_type, workout_id, recorded_at, evidence_class) VALUES "
+                "('bad-logged-session', 'dg-athlete-1', 'vo2max_wearable_ml_kg_min', 50.0, NULL, "
+                "'logged_session_derived', 'fake-workout-1', '2026-09-01T08:00:00', 'research_supported')"
+            ))
+    engine.dispose()
+
+    # Confirm the session/connection is still usable afterward and nothing was left inserted.
+    engine = create_engine(db_url)
+    with engine.connect() as conn:
+        count = conn.execute(text("SELECT COUNT(*) FROM capability_assessments")).scalar()
+    engine.dispose()
+    assert count == 0

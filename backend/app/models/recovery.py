@@ -48,6 +48,18 @@ class RecoveryReading(Base):
     sleep_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # 0-100
     vo2_max: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
+    # Program Engine v5 Milestone 2 (migration 0005) — field-level VO2max provenance, distinct
+    # from the bare `source` column above. `source` reflects whichever provider most recently
+    # synced ANY field on this row, which is NOT necessarily the provider that supplied the
+    # currently-stored `vo2_max` value if a later sync from a different provider only touched
+    # HRV/sleep. These three fields are set only by `record_reading` when `vo2_max` itself
+    # actually changes (see app/services/recovery_engine.py) — NULL on every row that predates
+    # this migration, never guessed. `vo2_max_updated_at` doubles as the source-revision marker
+    # capability ingestion uses to distinguish a genuine re-measurement from an unchanged resync.
+    vo2_max_source: Mapped[Optional[WearableProvider]] = mapped_column(String, nullable=True)
+    vo2_max_recorded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    vo2_max_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

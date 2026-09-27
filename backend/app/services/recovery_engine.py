@@ -8,7 +8,7 @@ it, adjust the current week. Nothing else should touch `actual_intensity` direct
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -51,8 +51,19 @@ def record_reading(
             existing.resting_hr_bpm = resting_hr_bpm
         if sleep_score is not None:
             existing.sleep_score = sleep_score
+        # Program Engine v5 Milestone 2: record VO2max field-level provenance only when the
+        # value actually changes (or is set for the first time) — never on every merge, which
+        # is what previously made the bare `source` column an unreliable stand-in for "who
+        # actually supplied this VO2max value" (an independent audit flagged this; see the
+        # Milestone 2 v2.2 plan, §D2). An unchanged resync of the same value is not a new
+        # revision and must not bump `vo2_max_updated_at`.
+        vo2max_changed = vo2_max is not None and vo2_max != existing.vo2_max
         if vo2_max is not None:
             existing.vo2_max = vo2_max
+        if vo2max_changed:
+            existing.vo2_max_source = source
+            existing.vo2_max_recorded_at = datetime.combine(reading_date, time.min)
+            existing.vo2_max_updated_at = datetime.utcnow()
         existing.source = source
         reading = existing
     else:
@@ -65,6 +76,10 @@ def record_reading(
             sleep_score=sleep_score,
             vo2_max=vo2_max,
         )
+        if vo2_max is not None:
+            reading.vo2_max_source = source
+            reading.vo2_max_recorded_at = datetime.combine(reading_date, time.min)
+            reading.vo2_max_updated_at = datetime.utcnow()
         db.add(reading)
 
     db.commit()

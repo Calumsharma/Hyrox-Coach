@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import athletes, auth, exercises, recovery, stations, training, workouts
+from app.api import athletes, auth, capabilities, exercises, recovery, stations, training, workouts
 from app.db_bootstrap import ensure_schema_current
 from app.seed_data import seed
 
@@ -21,6 +21,7 @@ app.include_router(training.router)
 app.include_router(workouts.router)
 app.include_router(exercises.router)
 app.include_router(recovery.router)
+app.include_router(capabilities.router)
 
 
 @app.on_event("startup")
